@@ -31,7 +31,7 @@ def add_image_to_excel(ws, img_file, cell_address):
             ws.add_image(img, cell_address)
             return
     
-    img.width, img.height = 300, 200 # Default หากไม่พบช่อง Merge
+    img.width, img.height = 300, 200 # ขนาดเริ่มต้นหากไม่พบการ Merge
     ws.add_image(img, cell_address)
 
 # --- 3. ระบบจัดการรูปภาพ (Session State) ---
@@ -60,7 +60,6 @@ st.header("🏢 Part 2: Project & Client")
 project_name = st.text_input("Project Name")
 site_location = st.text_input("Site / Location")
 contact_client = st.text_input("Contact Person (Client)")
-# ปรับแก้ข้อความตามที่ต้องการ: contact (ex: smart dev solution co,. Ltd.)
 contact_co_ltd = st.text_input("Contact (ex: Smart Dev Solution Co., Ltd.)")
 engineer_name = st.text_input("Engineer Name (Prepared By)")
 
@@ -76,24 +75,19 @@ final_photo_data = []
 
 for i in st.session_state.photos:
     with st.container():
-        # แบ่งคอลัมน์: ช่องกรอกข้อมูล(8) และ ปุ่มถังขยะ(1)
         col_img, col_del = st.columns([8, 1])
-        
         with col_img:
             img = st.file_uploader(f"Upload Image", type=['png', 'jpg', 'jpeg'], key=f"file_{i}")
             desc = st.text_input(f"Description", key=f"desc_{i}", placeholder="พิมพ์คำบรรยายรูปภาพที่นี่...")
-        
         with col_del:
-            st.write("") # เว้นระยะให้ปุ่มตรงกับช่องอัปโหลด
+            st.write("") 
             st.write("") 
             if st.button("🗑️", key=f"del_{i}"):
                 delete_photo(i)
                 st.rerun()
-        
         final_photo_data.append({"img": img, "desc": desc})
         st.markdown("---")
 
-# ปุ่มเพิ่มรูป
 st.button("➕ Add More Photo", on_click=add_photo)
 
 # --- 5. ส่วนประมวลผลเมื่อกดปุ่ม Submit ---
@@ -103,25 +97,32 @@ if st.button("🚀 Generate & Save Report", type="primary"):
         wb = load_workbook("template.xlsx")
         ws = wb.active
 
-        # Mapping ข้อมูลลงใน Excel
-        ws["B5"] = f"Doc.No. : {doc_no}"
-        ws["F6"] = f"Ref.PO.No. : {ref_po_no}"
-        ws["J5"] = date_issue.strftime('%d/%m/%Y')
-        ws["B16"] = project_name
-        ws["H7"] = site_location
-        ws["B10"] = contact_client
-        ws["A7"] = contact_co_ltd
-        ws["B42"] = engineer_name
-        ws["B21"] = job_performed
+        # ฟังก์ชันพิเศษสำหรับเขียนช่องที่ Merge ให้ปลอดภัย (กัน Error Read-only)
+        def write_safe(ws, cell_addr, value):
+            target_cell = ws[cell_addr]
+            ws.cell(row=target_cell.row, column=target_cell.column).value = value
 
-        # พิกัดสำหรับรูปภาพและคำบรรยาย (ปรับได้ตาม Template จริง)
-        loc_map = ["A49"]
-        desc_map = ["H49"]
+        # Mapping ข้อมูลลงใน Excel (อิงตามพิกัดที่คุณระบุ)
+        write_safe(ws, "B5", f"Doc.No. : {doc_no}")
+        write_safe(ws, "F6", f"Ref.PO.No. : {ref_po_no}")
+        write_safe(ws, "J5", date_issue.strftime('%d/%m/%Y'))
+        write_safe(ws, "B16", project_name)
+        write_safe(ws, "H7", site_location)
+        write_safe(ws, "B10", contact_client)
+        write_safe(ws, "A7", contact_co_ltd)
+        write_safe(ws, "B42", engineer_name)
+        write_safe(ws, "B21", job_performed)
+
+        # พิกัดสำหรับรูปภาพและคำบรรยาย (เพิ่มตำแหน่งรองรับรูปที่เพิ่มขึ้นได้)
+        # ตัวอย่างพิกัดที่คุณระบุเริ่มต้นคือ A49 และคำบรรยายที่ H49
+        loc_map = ["A49", "A65", "A81", "A97", "A113"] 
+        desc_map = ["H49", "H65", "H81", "H97", "H113"]
+
         count = 0
         for item in final_photo_data:
             if item["img"] and count < len(loc_map):
                 add_image_to_excel(ws, item["img"], loc_map[count])
-                ws[desc_map[count]] = item["desc"]
+                write_safe(ws, desc_map[count], item["desc"])
                 count += 1
 
         # เตรียมไฟล์ Excel สำหรับดาวน์โหลด
@@ -136,7 +137,7 @@ if st.button("🚀 Generate & Save Report", type="primary"):
             gs = client.open(GOOGLE_SHEET_NAME).sheet1
             gs.append_row([date_issue.strftime('%d/%m/%Y'), doc_no, project_name, engineer_name, datetime.now().strftime('%H:%M:%S')])
         except:
-            pass # ถ้า Sheet ต่อไม่ได้ก็ยังให้โหลดไฟล์ได้
+            pass 
 
         st.success("🎉 รายงานถูกสร้างเรียบร้อยแล้ว!")
         st.download_button("📥 Download Excel Report", excel_out.getvalue(), f"Report_{doc_no}.xlsx")
