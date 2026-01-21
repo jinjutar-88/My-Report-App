@@ -108,15 +108,31 @@ if st.button("🚀 SUBMIT & SEND", use_container_width=True):
                 wb.save(excel_io)
                 excel_bytes = excel_io.getvalue()
 
-                # บันทึก Google Sheets
-                try:
-                    scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-                    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
-                    client = gspread.authorize(creds)
-                    gs = client.open(GOOGLE_SHEET_NAME).sheet1
-                    gs.append_row([date_issue.strftime('%d/%m/%Y'), project_name, location, eng_name, datetime.now().strftime('%H:%M:%S')])
-                    st.success("✅ บันทึกลง Google Sheet สำเร็จ")
-                except Exception as e: st.error(f"Sheet Error: {e}")
+                # --- ส่วนบันทึก Google Sheets ---
+try:
+    # ดึงค่าจาก Secrets ที่เราเซฟไว้ (TOML)
+    scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
+    client = gspread.authorize(creds)
+    
+    # เปิดไฟล์ Sheet (ต้องมั่นใจว่าชื่อตรงกับใน Google Drive)
+    gs = client.open(GOOGLE_SHEET_NAME).sheet1
+    
+    # ข้อมูลที่จะบันทึก
+    row_to_add = [
+        date_issue.strftime('%d/%m/%Y'), 
+        project_name, 
+        location, 
+        eng_name, 
+        datetime.now().strftime('%H:%M:%S')
+    ]
+    
+    gs.append_row(row_to_add)
+    st.success("✅ บันทึกลง Google Sheet เรียบร้อยแล้ว!") # เปลี่ยนจาก Error เป็น Success
+
+except Exception as e:
+    st.error(f"⚠️ Sheet Error: {e}") # แสดง Error จริงๆ ออกมาถ้ามันทำไม่ได้
+
 
                 # ส่งเมล
                 try:
