@@ -14,7 +14,7 @@ from PIL import Image
 
 # --- 🛠 ส่วนที่ 1: CONFIGURATION (ใส่ข้อมูลของคุณตรงนี้) ---
 SENDER_EMAIL = "your-email@gmail.com"      
-SENDER_PASSWORD = "abcd efgh ijkl mnop" # รหัส 16 หลักจาก Google
+SENDER_PASSWORD = "uzfs bdtc xclz rzsq" # รหัส 16 หลักจาก Google
 RECEIVER_EMAIL = "target-email@gmail.com"        
 GOOGLE_SHEET_NAME = "Smart Dev Report Log" 
 
