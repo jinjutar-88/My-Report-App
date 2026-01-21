@@ -9,10 +9,14 @@ st.title("🛠 Smart Dev Solution - Service Report")
 
 # --- ส่วนของ Session State สำหรับจัดการจำนวนรูปภาพ ---
 if 'photo_count' not in st.session_state:
-    st.session_state.photo_count = 1 # เริ่มต้นที่ 1 รูป
+    st.session_state.photo_count = 1 
 
 def add_photo():
     st.session_state.photo_count += 1
+
+def remove_photo():
+    if st.session_state.photo_count > 1: # ป้องกันไม่ให้ลบจนเหลือ 0
+        st.session_state.photo_count -= 1
 
 # --- PART 1: ข้อมูลทั่วไป ---
 st.subheader("📋 Part 1: General Information")
@@ -38,7 +42,7 @@ st.subheader("🔧 Part 2: Service Details")
 job_performed = st.text_area("Job Performed (รายละเอียดงานที่ปฏิบัติ)", height=150)
 note = st.text_area("Note (หมายเหตุเพิ่มเติม)")
 
-# --- PART 3: รูปภาพและคำบรรยาย (แบบเพิ่มได้) ---
+# --- PART 3: รูปภาพและคำบรรยาย ---
 st.markdown("---")
 st.subheader("📸 Part 3: Photo Report")
 
@@ -55,8 +59,14 @@ for i in range(st.session_state.photo_count):
     photos.append({"file": up_file, "desc": desc})
     st.markdown("---")
 
-# ปุ่มกดเพื่อเพิ่มช่องรูปภาพ
-st.button("➕ Add More Photo", on_click=add_photo)
+# --- ปุ่ม เพิ่ม และ ลบ ช่องรูปภาพ ---
+btn_col1, btn_col2, _ = st.columns([1, 1, 4])
+with btn_col1:
+    st.button("➕ Add More Photo", on_click=add_photo, use_container_width=True)
+with btn_col2:
+    # แสดงปุ่มลบเฉพาะเมื่อมีรูปมากกว่า 1 รูป
+    if st.session_state.photo_count > 1:
+        st.button("🗑️ Remove Last Photo", on_click=remove_photo, use_container_width=True)
 
 # --- ปุ่มสร้างไฟล์ Excel ---
 st.write(" ")
@@ -65,23 +75,18 @@ if st.button("🚀 Generate Excel Report", use_container_width=True):
         wb = openpyxl.load_workbook("template.xlsx")
         sheet = wb.active 
 
-        # เติมข้อมูลลงใน Cell
+        # เติมข้อมูลลงใน Cell (ตำแหน่งเดิมของคุณ)
         sheet["J5"] = date_issue.strftime('%d/%m/%Y')
         sheet["H7"] = location
         sheet["C9"] = client_name
         sheet["B16"] = project_name
         sheet["D17"] = job_performed
-        
-        # ตัวอย่างการวนลูปเติมคำบรรยายรูปภาพลงใน Excel
-        # for idx, p in enumerate(photos):
-        #    if p["desc"]:
-        #        sheet[f"A{35 + (idx*5)}"] = p["desc"] # สมมติว่าวางห่างกันทุก 5 บรรทัด
 
         excel_data = io.BytesIO()
         wb.save(excel_data)
         excel_data.seek(0)
 
-        st.success(f"🎉 บันทึกข้อมูลพร้อมรูปภาพ {st.session_state.photo_count} ชุด เรียบร้อยแล้ว!")
+        st.success(f"🎉 บันทึกข้อมูลสำเร็จ (รวมรูปภาพทั้งหมด {st.session_state.photo_count} ชุด)")
         st.download_button(
             label="📥 Download Excel Report",
             data=excel_data,
