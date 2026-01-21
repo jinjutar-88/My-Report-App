@@ -100,8 +100,8 @@ if st.button("🚀 Generate & Save Report", type="primary"):
             ws[cell_addr] = value
 
         # Mapping ข้อมูล (ตามพิกัดที่คุณแจ้ง)
-        write_safe(ws, "B5", Doc.No.)
-        write_safe(ws, "F6", Ref.PO.No.)
+        write_safe(ws, "B5", f"Doc.No. : {}")
+        write_safe(ws, "F6", f"Ref.PO.No. : {}")
         write_safe(ws, "J5", date_issue.strftime('%d/%m/%Y'))
         write_safe(ws, "B16", project_name)
         write_safe(ws, "H7", site_location)
