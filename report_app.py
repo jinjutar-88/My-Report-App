@@ -79,7 +79,7 @@ def delete_photo(index):
 
 # --- 5. หน้าเว็บ UI ---
 st.set_page_config(page_title="Smart Dev Solution - Report", layout="wide")
-st.title("🚀 Smart Dev Report Generator v0.2")
+st.title("🚀 Smart Dev Solution Report 🚀")
 
 # Input Fields
 st.header("📄 Part 1: Document Details")
