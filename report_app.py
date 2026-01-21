@@ -13,9 +13,9 @@ from datetime import datetime
 from PIL import Image
 
 # --- 🛠 ส่วนที่ 1: CONFIGURATION (ใส่ข้อมูลของคุณตรงนี้) ---
-SENDER_EMAIL = "your-email@gmail.com"      
+SENDER_EMAIL = "jinjutar.smartdev@gmail.com"      
 SENDER_PASSWORD = "uzfs bdtc xclz rzsq" # รหัส 16 หลักจาก Google
-RECEIVER_EMAIL = "target-email@gmail.com"        
+RECEIVER_EMAIL = "jinjutar.smartdev@gmail.com"        
 GOOGLE_SHEET_NAME = "Smart Dev Report Log" 
 
 # --- ส่วนที่ 2: ตั้งค่าหน้าเว็บ ---
