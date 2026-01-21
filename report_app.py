@@ -12,7 +12,7 @@ from email import encoders
 from datetime import datetime
 from PIL import Image
 
-# --- 🛠 ส่วนที่ 1: CONFIGURATION (แก้ไขข้อมูลของคุณตรงนี้) ---
+# --- 🛠 ส่วนที่ 1: CONFIGURATION ---
 SENDER_EMAIL = "your-email@gmail.com"      
 SENDER_PASSWORD = "your-16-digit-app-password"   
 RECEIVER_EMAIL = "target@gmail.com"        
@@ -80,40 +80,43 @@ if st.button("🚀 SUBMIT, SEND EMAIL & SYNC TO SHEET", use_container_width=True
                 wb = openpyxl.load_workbook("template.xlsx")
                 ws = wb.active
                 
-                # แมปข้อมูลลง Cell (ปรับตำแหน่ง Cell ได้ตรงนี้)
-                ws["J5"] = date_issue.strftime('%d/%m/%Y')
-                ws["B5"] = doc_no
-                ws["F6"] = ref_po_no
-                ws["H7"] = location
-                ws["C9"] = client_name
-                ws["A7"] = contact_co_ltd
-                ws["B16"] = project_name
-                ws["D17"] = job_performed
-                ws["B36"] = note
+                # ฟังก์ชันป้องกัน MergedCell Error: เขียนเฉพาะช่องแรกของกลุ่มที่ผสาน
+                def safe_write(cell_coord, value):
+                    try:
+                        ws[cell_coord] = value
+                    except AttributeError: # กรณีเจอ Merged Cell
+                        pass 
 
-                               # --- แก้ไขพิกัดรูปภาพและคำบรรยาย ---
-                start_row = 49  # เริ่มต้นที่แถว 49 ตามที่คุณต้องการ
-                row_spacing = 20 # ระยะห่างระหว่างรูปที่ 1 กับรูปที่ 2 (ปรับเพิ่ม/ลดได้ตามความเหมาะสม)
+                safe_write("J5", date_issue.strftime('%d/%m/%Y'))
+                safe_write("B5", doc_no)
+                safe_write("F6", ref_po_no)
+                safe_write("H7", location)
+                safe_write("C9", client_name)
+                safe_write("A7", contact_co_ltd)
+                safe_write("B16", project_name)
+                safe_write("D17", job_performed)
+                safe_write("B36", note)
+
+                # --- ส่วนจัดการรูปภาพและคำบรรยาย (แถว 49) ---
+                start_row = 49  
+                row_spacing = 20 
 
                 for i, data in enumerate(photos_data):
                     if data["file"]:
                         current_row = start_row + (i * row_spacing)
+                        safe_write(f"H{current_row}", data["desc"]) # คำบรรยายที่ H49
                         
-                        # 1. ใส่คำบรรยายที่ช่อง H (ตามแถวที่กำหนด)
-                        ws[f"H{current_row}"] = data["desc"]
-                        
-                        # 2. ประมวลผลและใส่รูปภาพที่ช่อง A
                         img_pil = Image.open(data["file"])
-                        
-                        # ปรับขนาดรูปภาพให้พอดี (เช่น กว้าง 400 พิกเซล)
                         img_pil.thumbnail((400, 400)) 
-                        
                         img_io = io.BytesIO()
                         img_pil.save(img_io, format='PNG')
                         xl_img = XLImage(img_io)
-                        
-                        # วางรูปที่ช่อง A (ตามแถวที่กำหนด)
-                        ws.add_image(xl_img, f"A{current_row}") 
+                        ws.add_image(xl_img, f"A{current_row}") # รูปที่ A49
+
+                # สร้าง Byte Data ของ Excel
+                excel_io = io.BytesIO()
+                wb.save(excel_io)
+                excel_bytes = excel_io.getvalue()
 
                 # 2. บันทึกลง Google Sheets
                 try:
@@ -127,14 +130,14 @@ if st.button("🚀 SUBMIT, SEND EMAIL & SYNC TO SHEET", use_container_width=True
                         service_type, eng_name, datetime.now().strftime('%H:%M:%S')
                     ])
                     st.success("✅ Sync to Google Sheets สำเร็จ!")
-                except Exception as e: st.error(f"Google Sheet Error: {e}")
+                except Exception as gs_e: st.error(f"Google Sheet Error: {gs_e}")
 
                 # 3. ส่งอีเมล
                 try:
                     msg = MIMEMultipart()
                     msg['From'], msg['To'], msg['Subject'] = SENDER_EMAIL, RECEIVER_EMAIL, f"Report: {project_name}"
                     part = MIMEBase('application', 'octet-stream')
-                    part.set_payload(excel_bytes)
+                    part.set_payload(excel_bytes) # ใช้ excel_bytes ที่สร้างไว้ด้านบน
                     encoders.encode_base64(part)
                     part.add_header('Content-Disposition', f"attachment; filename=Report_{project_name}.xlsx")
                     msg.attach(part)
@@ -142,7 +145,7 @@ if st.button("🚀 SUBMIT, SEND EMAIL & SYNC TO SHEET", use_container_width=True
                         server.login(SENDER_EMAIL, SENDER_PASSWORD)
                         server.send_message(msg)
                     st.success("📧 ส่งเข้าอีเมลเรียบร้อย!")
-                except Exception as e: st.error(f"Email Error: {e}")
+                except Exception as em_e: st.error(f"Email Error: {em_e}")
 
                 st.download_button("📥 Download Excel Report", excel_bytes, f"Report_{project_name}.xlsx")
 
