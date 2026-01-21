@@ -107,5 +107,30 @@ if st.button("🚀 SUBMIT & SEND", use_container_width=True):
                 excel_io = io.BytesIO()
                 wb.save(excel_io)
                 excel_bytes = excel_io.getvalue()
+   # --- ส่วนบันทึก Google Sheets (ฉบับแก้ไข) ---
+                try:
+                    # 1. เชื่อมต่อโดยใช้ค่าจาก Secrets (TOML)
+                    scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+                    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
+                    client = gspread.authorize(creds)
+                    
+                    # 2. เปิดไฟล์ Sheet (ตรวจสอบชื่อไฟล์ให้ตรงกัน)
+                    # หมายเหตุ: ชื่อไฟล์ต้องตรงกับที่คุณตั้งไว้ในตัวแปร GOOGLE_SHEET_NAME
+                    sheet = client.open(GOOGLE_SHEET_NAME).sheet1
+                    
+                    # 3. เตรียมข้อมูลที่จะบันทึก
+                    row = [
+                        date_issue.strftime('%d/%m/%Y'), 
+                        project_name, 
+                        location, 
+                        eng_name, 
+                        datetime.now().strftime('%H:%M:%S')
+                    ]
+                    
+                    # 4. บันทึกข้อมูล
+                    sheet.append_row(row)
+                    st.success("✅ บันทึกข้อมูลลง Google Sheet เรียบร้อยแล้ว!")
 
-         ไม่สามารถบันทึกลง Sheet ได้: <Response [200]>
+                except Exception as e:
+                    # ถ้า Error จริงๆ จะแสดงที่นี่
+                    st.error(f"⚠️ ปัญหาการเชื่อมต่อ Sheet: {e}")
