@@ -104,20 +104,19 @@ if st.button("🚀 Generate & Save Report", type="primary"):
         ws = wb.active
 
         # Mapping ข้อมูลลงใน Excel
-        ws["A5"] = f"Doc.No. : {doc_no}"
-        ws["E5"] = f"Ref.PO.No. : {ref_po_no}"
-        ws["I5"] = date_issue.strftime('%d/%m/%Y')
-        ws["B20"] = project_name
-        ws["G8"] = site_location
+        ws["B5"] = f"Doc.No. : {doc_no}"
+        ws["F6"] = f"Ref.PO.No. : {ref_po_no}"
+        ws["J5"] = date_issue.strftime('%d/%m/%Y')
+        ws["B16"] = project_name
+        ws["H7"] = site_location
         ws["B10"] = contact_client
-        ws["B52"] = contact_co_ltd
-        ws["B60"] = engineer_name
+        ws["A7"] = contact_co_ltd
+        ws["B42"] = engineer_name
         ws["B21"] = job_performed
 
         # พิกัดสำหรับรูปภาพและคำบรรยาย (ปรับได้ตาม Template จริง)
-        loc_map = ["B58", "F58", "B75", "F75", "B92", "F92", "B109", "F109"]
-        desc_map = ["B70", "F70", "B87", "F87", "B104", "F104", "B121", "F121"]
-
+        loc_map = ["A49"]
+        desc_map = ["H49"]
         count = 0
         for item in final_photo_data:
             if item["img"] and count < len(loc_map):
