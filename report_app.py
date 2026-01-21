@@ -60,7 +60,7 @@ contact_co_ltd = st.text_input("Contact (ex: Smart Dev Solution Co., Ltd.)")
 engineer_name = st.text_input("Engineer Name (Prepared By)")
 
 st.header("🛠 Part 3: Service Details")
-service_type = st.selectbox("Service Type", ["New", "Commissioning", "Repairing", "Services", "Training", "Check", "Other"])
+service_type = st.selectbox("Service Type", ["Project", "Commissioning", "Repairing", "Services", "Training", "Check", "Other"])
 job_performed = st.text_area("Job Performed")
 
 st.header("📸 Part 4: Photo Report")
@@ -100,15 +100,15 @@ if st.button("🚀 Generate & Save Report", type="primary"):
             ws[cell_addr] = value
 
         # Mapping ข้อมูล (ตามพิกัดที่คุณแจ้ง)
-        write_safe(ws, "B5", f"Doc.No. : {doc_no}")
-        write_safe(ws, "F6", f"Ref.PO.No. : {ref_po_no}")
+        write_safe(ws, "B5", Doc.No.)
+        write_safe(ws, "F6", Ref.PO.No.)
         write_safe(ws, "J5", date_issue.strftime('%d/%m/%Y'))
         write_safe(ws, "B16", project_name)
         write_safe(ws, "H7", site_location)
-        write_safe(ws, "B10", contact_client)
+        write_safe(ws, "C9", contact_client)
         write_safe(ws, "A7", contact_co_ltd)
         write_safe(ws, "B42", engineer_name)
-        write_safe(ws, "B21", job_performed)
+        write_safe(ws, "D17", job_performed)
 
         # จัดการรูปภาพ
         loc_map = ["A49", "A65", "A81", "A97", "A113"] 
