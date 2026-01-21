@@ -4,9 +4,9 @@ import io
 import uuid 
 from datetime import datetime
 
-# ตั้งค่าหน้าเว็บ
+# 1. เปลี่ยนหัวข้อหน้าเว็บ (Title)
 st.set_page_config(page_title="Engineer Report Generator", layout="wide")
-st.title("🛠 Smart Dev Solution - Service Report")
+st.title("🛠 Smart Dev Solution - Report")
 
 # --- ส่วนของ Session State สำหรับจัดการลิสต์ของรูปภาพ ---
 if 'photo_ids' not in st.session_state:
@@ -31,7 +31,7 @@ with col2:
     doc_no = st.text_input("Doc. No.")
     client_name = st.text_input("Contact Person (Client)")
     contact_co_ltd = st.text_input("Contact (Co., Ltd.)")
-    # เปลี่ยนจาก New เป็น Project ตรงนี้ครับ
+    # Service Type: Project ตามที่แก้ไขก่อนหน้า
     service_type = st.selectbox("Service Type", ["Project", "Repairing", "Services", "Training", "Check", "Others"])
 
 eng_name = st.text_input("Engineer Name (Prepared By)")
@@ -42,7 +42,7 @@ st.subheader("🔧 Part 2: Service Details")
 job_performed = st.text_area("Job Performed", height=150)
 note = st.text_area("Note")
 
-# --- PART 3: รูปภาพและคำบรรยาย (แบบลบแยกตามช่อง) ---
+# --- PART 3: รูปภาพและคำบรรยาย (ระบบลบระบุช่อง) ---
 st.markdown("---")
 st.subheader("📸 Part 3: Photo Report")
 
@@ -76,6 +76,7 @@ if st.button("🚀 Generate Excel Report", use_container_width=True):
         wb = openpyxl.load_workbook("template.xlsx")
         sheet = wb.active 
         
+        # เติมข้อมูลลงใน Cell ตามตำแหน่งที่คุณกำหนด
         sheet["J5"] = date_issue.strftime('%d/%m/%Y')
         sheet["H7"] = location
         sheet["C9"] = client_name
@@ -86,7 +87,7 @@ if st.button("🚀 Generate Excel Report", use_container_width=True):
         wb.save(excel_data)
         excel_data.seek(0)
 
-        st.success(f"🎉 บันทึกสำเร็จ! ประเภทงาน: {service_type}")
+        st.success(f"🎉 สร้างรายงานสำเร็จ! (หัวข้อ: Smart Dev Solution - Report)")
         st.download_button("📥 Download Excel Report", excel_data, f"Report_{project_name}.xlsx")
     except Exception as e:
         st.error(f"❌ เกิดข้อผิดพลาด: {e}")
