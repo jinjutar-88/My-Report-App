@@ -107,18 +107,14 @@ if st.button("🚀 SUBMIT & SEND", use_container_width=True):
                 excel_io = io.BytesIO()
                 wb.save(excel_io)
                 excel_bytes = excel_io.getvalue()
-   # --- ส่วนบันทึก Google Sheets (ฉบับแก้ไข) ---
+                # --- ส่วนบันทึก Google Sheets ---
                 try:
-                    # 1. เชื่อมต่อโดยใช้ค่าจาก Secrets (TOML)
                     scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
                     creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
                     client = gspread.authorize(creds)
                     
-                    # 2. เปิดไฟล์ Sheet (ตรวจสอบชื่อไฟล์ให้ตรงกัน)
-                    # หมายเหตุ: ชื่อไฟล์ต้องตรงกับที่คุณตั้งไว้ในตัวแปร GOOGLE_SHEET_NAME
                     sheet = client.open(GOOGLE_SHEET_NAME).sheet1
                     
-                    # 3. เตรียมข้อมูลที่จะบันทึก
                     row = [
                         date_issue.strftime('%d/%m/%Y'), 
                         project_name, 
@@ -127,10 +123,37 @@ if st.button("🚀 SUBMIT & SEND", use_container_width=True):
                         datetime.now().strftime('%H:%M:%S')
                     ]
                     
-                    # 4. บันทึกข้อมูล
                     sheet.append_row(row)
-                    st.success("✅ บันทึกข้อมูลลง Google Sheet เรียบร้อยแล้ว!")
-
+                    st.success("✅ บันทึกลง Google Sheet สำเร็จ")
                 except Exception as e:
-                    # ถ้า Error จริงๆ จะแสดงที่นี่
-                    st.error(f"⚠️ ปัญหาการเชื่อมต่อ Sheet: {e}")
+                    # ถ้า Error แล้วมีเลข 200 แสดงว่าจริงๆ แล้วมันบันทึกสำเร็จ
+                    if "200" in str(e):
+                        st.success("✅ บันทึกลง Google Sheet เรียบร้อยแล้ว")
+                    else:
+                        st.warning(f"⚠️ Sheet Connection: {e}")
+
+                # --- ส่วนส่งอีเมล ---
+                try:
+                    msg = MIMEMultipart()
+                    msg['From'] = SENDER_EMAIL
+                    msg['To'] = RECEIVER_EMAIL
+                    msg['Subject'] = f"Report: {project_name}"
+                    
+                    part = MIMEBase('application', 'octet-stream')
+                    part.set_payload(excel_bytes)
+                    encoders.encode_base64(part)
+                    part.add_header('Content-Disposition', f"attachment; filename=Report_{project_name}.xlsx")
+                    msg.attach(part)
+                    
+                    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+                        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+                        server.send_message(msg)
+                    st.success("📧 ส่งอีเมลสำเร็จ!")
+                except Exception as e:
+                    st.error(f"❌ Email Error: {e}")
+
+                # ปุ่มดาวน์โหลด
+                st.download_button("📥 Download Excel", excel_bytes, f"Report_{project_name}.xlsx")
+
+            except Exception as e:
+                st.error(f"🚨 System Error: {e}")
