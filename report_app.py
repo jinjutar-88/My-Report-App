@@ -1,6 +1,5 @@
 import streamlit as st
 import openpyxl
-from openpyxl.drawing.image import Image as XLImage
 import io
 from datetime import datetime
 
@@ -8,7 +7,14 @@ from datetime import datetime
 st.set_page_config(page_title="Engineer Report Generator", layout="wide")
 st.title("🛠 Smart Dev Solution - Service Report")
 
-# --- PART 1: ข้อมูลทั่วไป (ตัด Ref. QT No. ออกแล้ว) ---
+# --- ส่วนของ Session State สำหรับจัดการจำนวนรูปภาพ ---
+if 'photo_count' not in st.session_state:
+    st.session_state.photo_count = 1 # เริ่มต้นที่ 1 รูป
+
+def add_photo():
+    st.session_state.photo_count += 1
+
+# --- PART 1: ข้อมูลทั่วไป ---
 st.subheader("📋 Part 1: General Information")
 col1, col2 = st.columns(2)
 
@@ -32,43 +38,50 @@ st.subheader("🔧 Part 2: Service Details")
 job_performed = st.text_area("Job Performed (รายละเอียดงานที่ปฏิบัติ)", height=150)
 note = st.text_area("Note (หมายเหตุเพิ่มเติม)")
 
-# --- PART 3: รูปภาพและคำบรรยาย ---
+# --- PART 3: รูปภาพและคำบรรยาย (แบบเพิ่มได้) ---
 st.markdown("---")
 st.subheader("📸 Part 3: Photo Report")
-col_img, col_txt = st.columns([1, 1])
 
-with col_img:
-    uploaded_photo = st.file_uploader("Upload Photo (อัปโหลดรูปภาพ)", type=['jpg', 'jpeg', 'png'])
-    if uploaded_photo:
-        st.image(uploaded_photo, caption="รูปภาพที่เลือก", width=350)
+photos = []
+for i in range(st.session_state.photo_count):
+    st.write(f"**Photo {i+1}**")
+    col_img, col_txt = st.columns([1, 1])
+    with col_img:
+        up_file = st.file_uploader(f"Upload Photo {i+1}", type=['jpg', 'jpeg', 'png'], key=f"file_{i}")
+        if up_file:
+            st.image(up_file, width=250)
+    with col_txt:
+        desc = st.text_area(f"Description for Photo {i+1}", key=f"desc_{i}", height=100)
+    photos.append({"file": up_file, "desc": desc})
+    st.markdown("---")
 
-with col_txt:
-    photo_description = st.text_area("Photo Description (คำบรรยายรูปภาพ)", height=200, placeholder="พิมพ์คำบรรยายใต้รูปภาพที่นี่...")
+# ปุ่มกดเพื่อเพิ่มช่องรูปภาพ
+st.button("➕ Add More Photo", on_click=add_photo)
 
 # --- ปุ่มสร้างไฟล์ Excel ---
-st.markdown("---")
+st.write(" ")
 if st.button("🚀 Generate Excel Report", use_container_width=True):
     try:
-        # 1. โหลดเทมเพลต (ต้องชื่อ template.xlsx อยู่ใน GitHub)
         wb = openpyxl.load_workbook("template.xlsx")
         sheet = wb.active 
 
-        # 2. เติมข้อมูลลงใน Cell (ตำแหน่งเดิมที่คุณเคยระบุไว้)
-        sheet["J5"] = date_issue.strftime('%d/%m/%Y') # Date
-        sheet["H7"] = location                        # Site/Location
-        sheet["C9"] = client_name                     # Contact Person
-        sheet["B16"] = project_name                    # Project
-        sheet["D17"] = job_performed                   # Job Performed
+        # เติมข้อมูลลงใน Cell
+        sheet["J5"] = date_issue.strftime('%d/%m/%Y')
+        sheet["H7"] = location
+        sheet["C9"] = client_name
+        sheet["B16"] = project_name
+        sheet["D17"] = job_performed
         
-        # ถ้าต้องการให้ข้อมูลอื่นลงช่องไหน เพิ่มได้ที่นี่ เช่น:
-        # sheet["F25"] = eng_name
+        # ตัวอย่างการวนลูปเติมคำบรรยายรูปภาพลงใน Excel
+        # for idx, p in enumerate(photos):
+        #    if p["desc"]:
+        #        sheet[f"A{35 + (idx*5)}"] = p["desc"] # สมมติว่าวางห่างกันทุก 5 บรรทัด
 
-        # 3. เตรียมไฟล์สำหรับการดาวน์โหลด
         excel_data = io.BytesIO()
         wb.save(excel_data)
         excel_data.seek(0)
 
-        st.success("🎉 บันทึกข้อมูลเรียบร้อยแล้ว!")
+        st.success(f"🎉 บันทึกข้อมูลพร้อมรูปภาพ {st.session_state.photo_count} ชุด เรียบร้อยแล้ว!")
         st.download_button(
             label="📥 Download Excel Report",
             data=excel_data,
