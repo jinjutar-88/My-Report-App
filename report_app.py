@@ -17,7 +17,6 @@ def add_image_to_excel(ws, img_file, cell_address):
         f.write(img_file.getbuffer())
     img = Image(temp_path)
     
-    # ตรวจสอบพื้นที่ (รองรับช่องที่ Merge)
     for m_range in ws.merged_cells.ranges:
         if cell_address in m_range:
             target_width = 0
@@ -30,13 +29,12 @@ def add_image_to_excel(ws, img_file, cell_address):
             img.width, img.height = target_width - 10, target_height - 10
             ws.add_image(img, cell_address)
             return
-    
-    img.width, img.height = 300, 200 # ขนาดเริ่มต้นหากไม่พบการ Merge
+    img.width, img.height = 300, 200
     ws.add_image(img, cell_address)
 
 # --- 3. ระบบจัดการรูปภาพ (Session State) ---
 if 'photos' not in st.session_state:
-    st.session_state.photos = [0] # เริ่มต้นด้วย 1 รูป (ID 0)
+    st.session_state.photos = [0]
 
 def add_photo():
     new_id = max(st.session_state.photos) + 1 if st.session_state.photos else 0
@@ -49,13 +47,11 @@ def delete_photo(index):
 # --- 4. หน้าเว็บ UI ---
 st.title("🚀 Smart Dev Report Generator")
 
-# Part 1: ข้อมูลเอกสาร
 st.header("📄 Part 1: Document Details")
 doc_no = st.text_input("Doc. No.")
 ref_po_no = st.text_input("Ref. PO No.")
 date_issue = st.date_input("Date of Issue", datetime.now())
 
-# Part 2: ข้อมูลโครงการและผู้ติดต่อ
 st.header("🏢 Part 2: Project & Client")
 project_name = st.text_input("Project Name")
 site_location = st.text_input("Site / Location")
@@ -63,16 +59,12 @@ contact_client = st.text_input("Contact Person (Client)")
 contact_co_ltd = st.text_input("Contact (ex: Smart Dev Solution Co., Ltd.)")
 engineer_name = st.text_input("Engineer Name (Prepared By)")
 
-# Part 3: รายละเอียดงาน
 st.header("🛠 Part 3: Service Details")
 service_type = st.selectbox("Service Type", ["New", "Commissioning", "Repairing", "Services", "Training", "Check", "Other"])
 job_performed = st.text_area("Job Performed")
 
-# Part 4: รายงานรูปภาพ (แบบ Dynamic พร้อมปุ่มถังขยะ)
 st.header("📸 Part 4: Photo Report")
-
 final_photo_data = []
-
 for i in st.session_state.photos:
     with st.container():
         col_img, col_del = st.columns([8, 1])
@@ -91,18 +83,23 @@ for i in st.session_state.photos:
 st.button("➕ Add More Photo", on_click=add_photo)
 
 # --- 5. ส่วนประมวลผลเมื่อกดปุ่ม Submit ---
-st.markdown("###")
 if st.button("🚀 Generate & Save Report", type="primary"):
     try:
         wb = load_workbook("template.xlsx")
         ws = wb.active
 
-        # ฟังก์ชันพิเศษสำหรับเขียนช่องที่ Merge ให้ปลอดภัย (กัน Error Read-only)
+        # ฟังก์ชันแก้ไขปัญหา MergedCell Read-only
         def write_safe(ws, cell_addr, value):
-            target_cell = ws[cell_addr]
-            ws.cell(row=target_cell.row, column=target_cell.column).value = value
+            # ตรวจสอบว่าเซลล์นั้นอยู่ในช่วงที่ Merge หรือไม่
+            for m_range in ws.merged_cells.ranges:
+                if cell_addr in m_range:
+                    # ถ้าเจอว่า Merge ให้เขียนลงที่เซลล์ซ้ายบนสุดของ Range นั้นๆ
+                    ws.cell(row=m_range.min_row, column=m_range.min_col).value = value
+                    return
+            # ถ้าไม่ Merge เขียนปกติ
+            ws[cell_addr] = value
 
-        # Mapping ข้อมูลลงใน Excel (อิงตามพิกัดที่คุณระบุ)
+        # Mapping ข้อมูล (ตามพิกัดที่คุณแจ้ง)
         write_safe(ws, "B5", f"Doc.No. : {doc_no}")
         write_safe(ws, "F6", f"Ref.PO.No. : {ref_po_no}")
         write_safe(ws, "J5", date_issue.strftime('%d/%m/%Y'))
@@ -113,8 +110,7 @@ if st.button("🚀 Generate & Save Report", type="primary"):
         write_safe(ws, "B42", engineer_name)
         write_safe(ws, "B21", job_performed)
 
-        # พิกัดสำหรับรูปภาพและคำบรรยาย (เพิ่มตำแหน่งรองรับรูปที่เพิ่มขึ้นได้)
-        # ตัวอย่างพิกัดที่คุณระบุเริ่มต้นคือ A49 และคำบรรยายที่ H49
+        # จัดการรูปภาพ
         loc_map = ["A49", "A65", "A81", "A97", "A113"] 
         desc_map = ["H49", "H65", "H81", "H97", "H113"]
 
@@ -125,19 +121,17 @@ if st.button("🚀 Generate & Save Report", type="primary"):
                 write_safe(ws, desc_map[count], item["desc"])
                 count += 1
 
-        # เตรียมไฟล์ Excel สำหรับดาวน์โหลด
         excel_out = io.BytesIO()
         wb.save(excel_out)
         
-        # บันทึกประวัติลง Google Sheet
+        # ส่วน Google Sheet
         try:
             scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
             creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
             client = gspread.authorize(creds)
             gs = client.open(GOOGLE_SHEET_NAME).sheet1
             gs.append_row([date_issue.strftime('%d/%m/%Y'), doc_no, project_name, engineer_name, datetime.now().strftime('%H:%M:%S')])
-        except:
-            pass 
+        except: pass 
 
         st.success("🎉 รายงานถูกสร้างเรียบร้อยแล้ว!")
         st.download_button("📥 Download Excel Report", excel_out.getvalue(), f"Report_{doc_no}.xlsx")
