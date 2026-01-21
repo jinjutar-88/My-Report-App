@@ -5,11 +5,44 @@ from datetime import datetime
 import io
 import gspread
 from google.oauth2.service_account import Credentials
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 
-# --- 1. การตั้งค่าพื้นฐาน ---
+# --- 1. CONFIGURATION (ข้อมูลจากรูปภาพของคุณ) ---
+SENDER_EMAIL = "jinjutar.smartdev@gmail.com"
+SENDER_PASSWORD = "uzfs bdtc xclz rzsq" # App Password 16 หลัก
+RECEIVER_EMAIL = "jinjutar.smartdev@gmail.com"
 GOOGLE_SHEET_NAME = "Smart Dev Report Log"
 
-# --- 2. ฟังก์ชันจัดการรูปภาพให้พอดีช่อง ---
+# --- 2. ฟังก์ชันส่งอีเมล ---
+def send_email_with_report(file_data, filename, doc_no):
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = RECEIVER_EMAIL
+        msg['Subject'] = f"New Service Report: {doc_no}"
+
+        # แนบไฟล์ Excel
+        part = MIMEBase('application', 'octet-stream')
+        part.set_payload(file_data)
+        encoders.encode_base64(part)
+        part.add_header('Content-Disposition', f'attachment; filename={filename}')
+        msg.attach(part)
+
+        # เชื่อมต่อ Server Gmail
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+        return True
+    except Exception as e:
+        st.error(f"Email Error: {e}")
+        return False
+
+# --- 3. ฟังก์ชันจัดการรูปภาพ ---
 def add_image_to_excel(ws, img_file, cell_address):
     if img_file is None: return
     temp_path = f"temp_{cell_address}.png"
@@ -32,7 +65,7 @@ def add_image_to_excel(ws, img_file, cell_address):
     img.width, img.height = 300, 200
     ws.add_image(img, cell_address)
 
-# --- 3. ระบบจัดการรูปภาพ (Session State) ---
+# --- 4. ระบบจัดการรูปภาพ (Session State) ---
 if 'photos' not in st.session_state:
     st.session_state.photos = [0]
 
@@ -44,9 +77,11 @@ def delete_photo(index):
     if len(st.session_state.photos) > 1:
         st.session_state.photos.remove(index)
 
-# --- 4. หน้าเว็บ UI ---
-st.title("🚀 Smart Dev Report Generator")
+# --- 5. หน้าเว็บ UI ---
+st.set_page_config(page_title="Smart Dev Solution - Report", layout="wide")
+st.title("🚀 Smart Dev Report Generator v0.2")
 
+# Input Fields
 st.header("📄 Part 1: Document Details")
 doc_no = st.text_input("Doc. No.")
 ref_po_no = st.text_input("Ref. PO No.")
@@ -70,7 +105,7 @@ for i in st.session_state.photos:
         col_img, col_del = st.columns([8, 1])
         with col_img:
             img = st.file_uploader(f"Upload Image", type=['png', 'jpg', 'jpeg'], key=f"file_{i}")
-            desc = st.text_input(f"Description", key=f"desc_{i}", placeholder="พิมพ์คำบรรยายรูปภาพที่นี่...")
+            desc = st.text_input(f"Description", key=f"desc_{i}", placeholder="พิมพ์คำบรรยาย...")
         with col_del:
             st.write("") 
             st.write("") 
@@ -82,26 +117,22 @@ for i in st.session_state.photos:
 
 st.button("➕ Add More Photo", on_click=add_photo)
 
-# --- 5. ส่วนประมวลผลเมื่อกดปุ่ม Submit ---
-if st.button("🚀 Generate & Save Report", type="primary"):
+# --- 6. ประมวลผลและส่งอีเมล ---
+if st.button("🚀 Generate, Save & Send Email", type="primary"):
     try:
         wb = load_workbook("template.xlsx")
         ws = wb.active
 
-        # ฟังก์ชันแก้ไขปัญหา MergedCell Read-only
         def write_safe(ws, cell_addr, value):
-            # ตรวจสอบว่าเซลล์นั้นอยู่ในช่วงที่ Merge หรือไม่
             for m_range in ws.merged_cells.ranges:
                 if cell_addr in m_range:
-                    # ถ้าเจอว่า Merge ให้เขียนลงที่เซลล์ซ้ายบนสุดของ Range นั้นๆ
                     ws.cell(row=m_range.min_row, column=m_range.min_col).value = value
                     return
-            # ถ้าไม่ Merge เขียนปกติ
             ws[cell_addr] = value
 
-        # Mapping ข้อมูล (ตามพิกัดที่คุณแจ้ง)
-        write_safe(ws, "B5", doc_no) # จะวางแค่เลขที่เอกสาร เช่น "S26-00000"
-        write_safe(ws, "F6", ref_po_no) # จะวางแค่เลขPO เช่น "PO123456789"
+        # เขียนข้อมูลลง Excel
+        write_safe(ws, "B5", doc_no)
+        write_safe(ws, "F6", ref_po_no)
         write_safe(ws, "J5", date_issue.strftime('%d/%m/%Y'))
         write_safe(ws, "B16", project_name)
         write_safe(ws, "H7", site_location)
@@ -113,7 +144,6 @@ if st.button("🚀 Generate & Save Report", type="primary"):
         # จัดการรูปภาพ
         loc_map = ["A49", "A65", "A81", "A97", "A113"] 
         desc_map = ["H49", "H65", "H81", "H97", "H113"]
-
         count = 0
         for item in final_photo_data:
             if item["img"] and count < len(loc_map):
@@ -123,8 +153,15 @@ if st.button("🚀 Generate & Save Report", type="primary"):
 
         excel_out = io.BytesIO()
         wb.save(excel_out)
+        file_bytes = excel_out.getvalue()
+        filename = f"Report_{doc_no}.xlsx"
         
-        # ส่วน Google Sheet
+        # --- ส่งอีเมล ---
+        with st.spinner('กำลังส่งอีเมล...'):
+            if send_email_with_report(file_bytes, filename, doc_no):
+                st.success(f"📩 ส่งอีเมลไปยัง {RECEIVER_EMAIL} สำเร็จ!")
+
+        # บันทึกลง Google Sheet
         try:
             scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
             creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
@@ -133,9 +170,9 @@ if st.button("🚀 Generate & Save Report", type="primary"):
             gs.append_row([date_issue.strftime('%d/%m/%Y'), doc_no, project_name, engineer_name, datetime.now().strftime('%H:%M:%S')])
         except: pass 
 
-        st.success("🎉 รายงานถูกสร้างเรียบร้อยแล้ว!")
-        st.download_button("📥 Download Excel Report", excel_out.getvalue(), f"Report_{doc_no}.xlsx")
+        st.success("🎉 บันทึกรายงานสำเร็จ!")
+        st.download_button("📥 Download Excel Copy", file_bytes, filename)
         st.balloons()
 
     except Exception as e:
-        st.error(f"🚨 เกิดข้อผิดพลาด: {e}")
+        st.error(f"🚨 Error: {e}")
