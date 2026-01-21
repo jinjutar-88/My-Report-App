@@ -3,10 +3,11 @@ import openpyxl
 import io
 from datetime import datetime
 
+# ตั้งค่าหน้าเว็บ
 st.set_page_config(page_title="Engineer Report Generator", layout="wide")
 st.title("🛠 Smart Dev Solution - Service Report")
 
-# --- ส่วนรับข้อมูลจากหน้าเว็บ ---
+# --- ส่วนที่ 1: รับข้อมูลจากหน้าเว็บ ---
 col1, col2 = st.columns(2)
 with col1:
     date_issue = st.date_input("Date of Issue")
@@ -18,24 +19,21 @@ with col2:
 
 job_performed = st.text_area("Job Performed")
 
-# --- ปุ่มสร้างไฟล์ Excel ---
+# --- ส่วนที่ 2: ปุ่มสร้างไฟล์ Excel ---
 if st.button("🚀 Generate Excel Report"):
     try:
-        # 1. โหลดเทมเพลต (ไฟล์ต้องชื่อ template.xlsx และอยู่ใน GitHub)
+        # 1. โหลดเทมเพลต Excel (ต้องชื่อ template.xlsx และอยู่ใน GitHub)
         wb = openpyxl.load_workbook("template.xlsx")
         sheet = wb.active 
 
-        # 2. [span_0](start_span)เติมข้อมูลตามตำแหน่ง Cell ที่คุณระบุมาใหม่[span_0](end_span)
-        sheet["J5"] = date_issue.strftime('%d/%m/%Y') 
-        sheet["H7"] = location      
-        sheet["C9"] = client_name   
-        sheet["B16"] = project_name  
-        sheet["D17"] = job_performed 
-        
-        # เพิ่มเติม: ช่องสำหรับชื่อวิศวกร (ถ้ามีในฟอร์ม เช่น ช่องคนทำ)
-        # sheet["H25"] = eng_name 
+        # 2. เติมข้อมูลตามตำแหน่ง Cell ที่คุณกำหนดมาเป๊ะๆ
+        [span_0](start_span)sheet["J5"] = date_issue.strftime('%d/%m/%Y') # วันที่[span_0](end_span)
+        [span_1](start_span)sheet["H7"] = location                        # สถานที่[span_1](end_span)
+        [span_2](start_span)sheet["C9"] = client_name                     # ผู้ติดต่อ[span_2](end_span)
+        [span_3](start_span)sheet["B16"] = project_name                    # ชื่อโปรเจกต์[span_3](end_span)
+        [span_4](start_span)sheet["D17"] = job_performed                   # รายละเอียดงาน[span_4](end_span)
 
-        # 3. เตรียมไฟล์ดาวน์โหลด
+        # 3. เตรียมไฟล์สำหรับการดาวน์โหลด
         excel_data = io.BytesIO()
         wb.save(excel_data)
         excel_data.seek(0)
@@ -47,5 +45,9 @@ if st.button("🚀 Generate Excel Report"):
             file_name=f"Service_Report_{project_name}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
+    # --- ส่วนดักจับข้อผิดพลาดที่คุณส่งมา ---
     except Exception as e:
-        st.error(f"เกิดข้อผิดพลาด: {e}")
+        st.error(f"❌ เกิดข้อผิดพลาด: {e}")
+        st.info("คำแนะนำ: ตรวจสอบว่ามีไฟล์ชื่อ 'template.xlsx' อยู่ใน GitHub หรือยัง?")
+
