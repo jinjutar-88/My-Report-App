@@ -101,7 +101,7 @@ if st.button("🚀 Generate & Save Report", type="primary"):
 
         # Mapping ข้อมูล (ตามพิกัดที่คุณแจ้ง)
         write_safe(ws, "B5", Doc_No.) # จะวางแค่เลขที่เอกสาร เช่น "S26-00000"
-        write_safe(ws, "F6", Ref_PO)_No.) # จะวางแค่เลขPO เช่น "PO123456789"
+        write_safe(ws, "F6", Ref_PO_No.) # จะวางแค่เลขPO เช่น "PO123456789"
         write_safe(ws, "J5", date_issue.strftime('%d/%m/%Y'))
         write_safe(ws, "B16", project_name)
         write_safe(ws, "H7", site_location)
