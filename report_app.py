@@ -83,8 +83,8 @@ st.title("🚀 Smart Dev Report Generator v0.2")
 
 # Input Fields
 st.header("📄 Part 1: Document Details")
-doc_no = st.text_input("Doc. No.")
-ref_po_no = st.text_input("Ref. PO No.")
+doc_no = st.text_input("Doc. No.(Indent)")
+ref_po_no = st.text_input("Ref. PO No.(ไม่ทราบเขียน - )")
 date_issue = st.date_input("Date of Issue", datetime.now())
 
 st.header("🏢 Part 2: Project & Client")
