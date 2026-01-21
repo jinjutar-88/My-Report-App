@@ -108,47 +108,51 @@ if st.button("🚀 SUBMIT & SEND", use_container_width=True):
                 wb.save(excel_io)
                 excel_bytes = excel_io.getvalue()
 
-                # --- ส่วนบันทึก Google Sheets ---
-try:
-    # ดึงค่าจาก Secrets ที่เราเซฟไว้ (TOML)
-    scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
-    client = gspread.authorize(creds)
-    
-    # เปิดไฟล์ Sheet (ต้องมั่นใจว่าชื่อตรงกับใน Google Drive)
-    gs = client.open(GOOGLE_SHEET_NAME).sheet1
-    
-    # ข้อมูลที่จะบันทึก
-    row_to_add = [
-        date_issue.strftime('%d/%m/%Y'), 
-        project_name, 
-        location, 
-        eng_name, 
-        datetime.now().strftime('%H:%M:%S')
-    ]
-    
-    gs.append_row(row_to_add)
-    st.success("✅ บันทึกลง Google Sheet เรียบร้อยแล้ว!") # เปลี่ยนจาก Error เป็น Success
+                              # --- ส่วนบันทึก Google Sheets ---
+                try:
+                    scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+                    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
+                    client = gspread.authorize(creds)
+                    
+                    # เปิดไฟล์ Sheet
+                    gs = client.open(GOOGLE_SHEET_NAME).sheet1
+                    
+                    # เตรียมข้อมูลบันทึก
+                    row_to_add = [
+                        date_issue.strftime('%d/%m/%Y'), 
+                        project_name, 
+                        location, 
+                        eng_name, 
+                        datetime.now().strftime('%H:%M:%S')
+                    ]
+                    
+                    gs.append_row(row_to_add)
+                    st.success("✅ บันทึกลง Google Sheet สำเร็จ")
+                except Exception as e:
+                    # ถ้า Error จะแสดงแจ้งเตือน แต่ไม่ทำให้แอปค้าง
+                    st.warning(f"⚠️ ไม่สามารถบันทึกลง Sheet ได้: {e}")
 
-except Exception as e:
-    st.error(f"⚠️ Sheet Error: {e}") # แสดง Error จริงๆ ออกมาถ้ามันทำไม่ได้
-
-
-                # ส่งเมล
+                # --- ส่วนส่งเมล (มีอยู่แล้วในโค้ดเดิมของคุณ) ---
                 try:
                     msg = MIMEMultipart()
-                    msg['From'], msg['To'], msg['Subject'] = SENDER_EMAIL, RECEIVER_EMAIL, f"Report: {project_name}"
+                    msg['From'] = SENDER_EMAIL
+                    msg['To'] = RECEIVER_EMAIL
+                    msg['Subject'] = f"Report: {project_name}"
+                    
                     part = MIMEBase('application', 'octet-stream')
                     part.set_payload(excel_bytes)
                     encoders.encode_base64(part)
                     part.add_header('Content-Disposition', f"attachment; filename=Report_{project_name}.xlsx")
                     msg.attach(part)
+                    
                     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
                         server.login(SENDER_EMAIL, SENDER_PASSWORD)
                         server.send_message(msg)
                     st.success("📧 ส่งเมลสำเร็จ!")
-                except Exception as e: st.error(f"Email Error: {e}")
+                except Exception as e:
+                    st.error(f"❌ Email Error: {e}")
 
                 st.download_button("📥 Download Excel", excel_bytes, f"Report_{project_name}.xlsx")
 
-            except Exception as e: st.error(f"System Error: {e}")
+            except Exception as e:
+                st.error(f"🚨 System Error: {e}")
