@@ -90,7 +90,7 @@ date_issue = st.date_input("Date of Issue", datetime.now())
 st.header("🏢 Part 2: Project & Client")
 project_name = st.text_input("Project Name")
 site_location = st.text_input("Site / Location")
-contact_client = st.text_input("Contact Person (Client)")
+contact_client = st.text_input("Contact Person (Client Name)")
 contact_co_ltd = st.text_input("Contact (ex: Smart Dev Solution Co., Ltd.)")
 engineer_name = st.text_input("Engineer Name (Prepared By)")
 
