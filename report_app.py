@@ -6,21 +6,19 @@ import io
 import gspread
 from google.oauth2.service_account import Credentials
 
-# --- 1. การตั้งค่าพื้นฐาน ---
+# --- 1. ตั้งค่าพื้นฐาน ---
 GOOGLE_SHEET_NAME = "Smart Dev Report Log"
 
-# --- 2. ฟังก์ชันจัดการรูปภาพให้พอดีช่อง Excel ---
+# --- 2. ฟังก์ชันจัดการรูปภาพให้พอดีช่อง ---
 def add_image_to_excel(ws, img_file, cell_address):
-    if img_file is None:
-        return
+    if img_file is None: return
     temp_path = f"temp_{cell_address}.png"
     with open(temp_path, "wb") as f:
         f.write(img_file.getbuffer())
     img = Image(temp_path)
     
-    # คำนวณขนาด (รองรับช่องที่ Merge)
-    target_width = 0
-    target_height = 0
+    # ตรวจสอบพื้นที่ (รองรับช่องที่ Merge)
+    target_width, target_height = 0, 0
     for m_range in ws.merged_cells.ranges:
         if cell_address in m_range:
             for col in range(m_range.min_col, m_range.max_col + 1):
@@ -31,116 +29,96 @@ def add_image_to_excel(ws, img_file, cell_address):
             img.width, img.height = target_width - 10, target_height - 10
             ws.add_image(img, cell_address)
             return
-
-    # ถ้าไม่ Merge ใช้ขนาดปกติ
-    col_letter = cell_address[0]
-    row_num = int(''.join(filter(str.isdigit, cell_address)))
-    img.width = (ws.column_dimensions[col_letter].width or 8.43) * 7.5 - 10
-    img.height = (ws.row_dimensions[row_num].height or 15) * 1.33 - 10
+    # กรณีช่องปกติ
+    img.width, img.height = 300, 200 # ขนาด Default หากไม่พบช่อง Merge
     ws.add_image(img, cell_address)
 
-# --- 3. หน้าเว็บ (UI) แบ่งเป็น Part ตามแบบเดิม ---
+# --- 3. ระบบจัดการจำนวนรูปภาพ (เพิ่ม/ลบ) ---
+if 'num_photos' not in st.session_state:
+    st.session_state.num_photos = 1
+
+def add_photo(): st.session_state.num_photos += 1
+def remove_photo(): 
+    if st.session_state.num_photos > 1: st.session_state.num_photos -= 1
+
+# --- 4. หน้าเว็บ UI ---
 st.title("🚀 Smart Dev Report Generator")
 
-# --- PART 1: General Information ---
-st.header("📋 Part 1: General Information")
+# PART 1: Document Details
+st.header("📄 Part 1: Document Details")
+doc_no = st.text_input("Doc. No.")
+ref_po_no = st.text_input("Ref. PO No.")
 date_issue = st.date_input("Date of Issue", datetime.now())
+
+# PART 2: Project & Client
+st.header("🏢 Part 2: Project & Client")
 project_name = st.text_input("Project Name")
 site_location = st.text_input("Site / Location")
-engineer_name = st.text_input("Engineer Name")
-
-# --- PART 2: Contact Details ---
-st.header("👤 Part 2: Contact Details")
 contact_client = st.text_input("Contact Person (Client)")
 contact_co_ltd = st.text_input("Contact (Smart Dev Solution Co., Ltd.)")
+engineer_name = st.text_input("Engineer Name (Prepared By)")
 
-# --- PART 3: Service Type & Job Performed ---
+# PART 3: Service Details
 st.header("🛠 Part 3: Service Details")
-service_type = st.selectbox("Service Type", [
-    "New", "Commissioning", "Repairing", "Services", "Training", "Check", "Other"
-])
-job_performed = st.text_area("Job Performed", height=100)
+service_type = st.selectbox("Service Type", ["New", "Commissioning", "Repairing", "Services", "Training", "Check", "Other"])
+job_performed = st.text_area("Job Performed")
 
-# --- PART 4: Photo Report & Description ---
-st.header("📸 Part 4: Photo & Description")
+# PART 4: Photo Report (Dynamic)
+st.header("📸 Part 4: Photo Report")
+photo_data = []
+for i in range(st.session_state.num_photos):
+    st.subheader(f"Photo {i+1}")
+    img = st.file_uploader(f"Upload Image {i+1}", type=['png', 'jpg', 'jpeg'], key=f"img_{i}")
+    desc = st.text_input(f"Description for Photo {i+1}", key=f"desc_{i}")
+    photo_data.append({"img": img, "desc": desc})
 
-# รูปที่ 1
-st.subheader("Photo 1")
-img1 = st.file_uploader("Upload Image 1", type=['png', 'jpg', 'jpeg'], key="img1")
-desc1 = st.text_input("Description 1", key="desc1")
-
-# รูปที่ 2
-st.subheader("Photo 2")
-img2 = st.file_uploader("Upload Image 2", type=['png', 'jpg', 'jpeg'], key="img2")
-desc2 = st.text_input("Description 2", key="desc2")
-
-# รูปที่ 3
-st.subheader("Photo 3")
-img3 = st.file_uploader("Upload Image 3", type=['png', 'jpg', 'jpeg'], key="img3")
-desc3 = st.text_input("Description 3", key="desc3")
-
-# รูปที่ 4
-st.subheader("Photo 4")
-img4 = st.file_uploader("Upload Image 4", type=['png', 'jpg', 'jpeg'], key="img4")
-desc4 = st.text_input("Description 4", key="desc4")
+col_btn1, col_btn2 = st.columns(2)
+with col_btn1: st.button("➕ Add Photo", on_click=add_photo)
+with col_btn2: st.button("➖ Remove Photo", on_click=remove_photo)
 
 st.markdown("---")
 
-# --- ส่วนประมวลผลเมื่อกด Submit ---
-if st.button("Generate & Save Report"):
+if st.button("Submit & Generate Report"):
     try:
-        # 1. โหลด Template
         wb = load_workbook("template.xlsx")
         ws = wb.active
 
-        # 2. เขียนข้อมูลลง Excel (อิงตามตำแหน่งใน Template ของคุณ)
+        #Mapping ข้อมูลลง Excel (ตัวอย่างตำแหน่ง - โปรดปรับตามไฟล์จริง)
+        ws["A5"] = f"Doc.No. : {doc_no}"
+        ws["E5"] = f"Ref.PO.No. : {ref_po_no}"
         ws["I5"] = date_issue.strftime('%d/%m/%Y')
         ws["B20"] = project_name
         ws["G8"] = site_location
-        ws["B60"] = engineer_name  # สมมติจุดเซ็นชื่อ Prepared By
         ws["B10"] = contact_client
-        ws["B52"] = contact_co_ltd
-        ws["D14"] = service_type
-        ws["B21"] = job_performed
+        ws["B52"] = contact_co_ltd # Contact Co.Ltd
+        ws["B60"] = engineer_name
 
-        # 3. จัดการรูปและคำบรรยาย (ใส่ตามพิกัดที่ระบุไว้ใน Template)
-        # ตัวอย่าง: รูปวางช่อง B58, คำบรรยายวางช่อง B70
-        photo_configs = [
-            (img1, "B58", desc1, "B70"),
-            (img2, "F58", desc2, "F70"),
-            (img3, "B75", desc3, "B87"),
-            (img4, "F75", desc4, "F87")
-        ]
+        # ตำแหน่งสำหรับวางรูป (วนลูปตามจำนวนรูปที่อัปโหลด)
+        # ตัวอย่างพิกัดรูป: B58, F58, B75, F75 ...
+        loc_map = ["B58", "F58", "B75", "F75", "B92", "F92"] # เพิ่มตำแหน่งรองรับรูปเยอะๆ
+        desc_map = ["B70", "F70", "B87", "F87", "B104", "F104"]
 
-        for img_file, img_loc, desc_text, desc_loc in photo_configs:
-            if img_file:
-                add_image_to_excel(ws, img_file, img_loc)
-            if desc_text:
-                ws[desc_loc] = desc_text
+        for idx, item in enumerate(photo_data):
+            if item["img"] and idx < len(loc_map):
+                add_image_to_excel(ws, item["img"], loc_map[idx])
+                ws[desc_map[idx]] = item["desc"]
 
-        # 4. เตรียมไฟล์ดาวน์โหลด
+        # บันทึกและส่งออก
         excel_out = io.BytesIO()
         wb.save(excel_out)
-        excel_bytes = excel_out.getvalue()
-
-        # 5. บันทึกลง Google Sheet
+        
+        # บันทึกลง Google Sheet
         try:
             scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
             creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
             client = gspread.authorize(creds)
             gs = client.open(GOOGLE_SHEET_NAME).sheet1
-            gs.append_row([
-                date_issue.strftime('%d/%m/%Y'), project_name, site_location, 
-                engineer_name, service_type, datetime.now().strftime('%H:%M:%S')
-            ])
-            st.success("✅ บันทึกลง Google Sheet สำเร็จ")
-        except Exception as e:
-            if "200" in str(e): st.success("✅ บันทึกลง Google Sheet สำเร็จ (200)")
-            else: st.warning(f"⚠️ Sheet Error: {e}")
+            gs.append_row([date_issue.strftime('%d/%m/%Y'), doc_no, project_name, engineer_name])
+            st.success("✅ บันทึกลง Google Sheet เรียบร้อย")
+        except: pass
 
-        # 6. ปุ่มดาวน์โหลด
-        st.download_button("📥 Download Excel", excel_bytes, f"Report_{project_name}.xlsx")
+        st.download_button("📥 Download Excel Report", excel_out.getvalue(), f"Report_{doc_no}.xlsx")
         st.balloons()
 
     except Exception as e:
-        st.error(f"🚨 ข้อผิดพลาด: {e}")
+        st.error(f"🚨 Error: {e}")
