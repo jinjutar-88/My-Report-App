@@ -3,4 +3,3 @@ gspread
 google-auth
 openpyxl
 Pillow
-excel2img
