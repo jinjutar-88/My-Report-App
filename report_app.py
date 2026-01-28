@@ -145,9 +145,11 @@ if st.button("🚀 Generate & Send Report", type="primary", use_container_width=
         loc_fixed = ["A49", "A62", "A75", "A92", "A105", "A118"]
         desc_fixed = ["H49", "H62", "H75", "H92", "H105", "H118"]
         
-        current_cursor = 131 
         header_h = 4
         block_h = 13
+
+last_fixed_row = int(''.join(filter(str.isdigit, loc_fixed[-1])))
+current_cursor = last_fixed_row + block_h
 
         for idx, item in enumerate(final_photo_data):
             if not item["img"]: continue
