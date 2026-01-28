@@ -10,12 +10,16 @@ from email.mime.base import MIMEBase
 from email import encoders
 from copy import copy
 
-# --- CONFIG ---
+# ---------------- CONFIG ----------------
 SENDER_EMAIL = "jinjutar.smartdev@gmail.com"
 SENDER_PASSWORD = "UZFS BDTC XCLZ RZSQ"
 RECEIVER_EMAIL = "jinjutar.smartdev@gmail.com"
 
-# --- HELPERS ---
+TEMPLATE_FILE = "template 2.xlsx"
+MAIN_SHEET = "1"
+TEMPLATE_SHEET = "ImageTemplate"
+
+# ---------------- HELPERS ----------------
 def add_image_to_excel(ws, img_file, cell_address):
     if img_file is None:
         return
@@ -24,6 +28,7 @@ def add_image_to_excel(ws, img_file, cell_address):
     img = Image(img_data)
 
     max_w, max_h = 350, 250
+
     for m_range in ws.merged_cells.ranges:
         if ws[cell_address].coordinate in m_range:
             max_w = sum(
@@ -53,67 +58,64 @@ def write_safe(ws, cell_addr, value):
     ws[cell_addr] = value
 
 
-# --- UI ---
+# ---------------- UI ----------------
 st.set_page_config(page_title="Smart Dev Report Generator", layout="wide")
 
-if 'photos' not in st.session_state:
+if "photos" not in st.session_state:
     st.session_state.photos = [0]
 
-st.title("🚀 Smart Dev Report Generator v1.0")
+st.title("🚀 Smart Dev Report Generator")
 
-st.subheader("📄 Part 1: Document Details")
+st.subheader("📄 Part 1")
 c1, c2, c3 = st.columns(3)
-doc_no = c1.text_input("Doc. No.")
-ref_po = c2.text_input("Ref. PO No.")
+doc_no = c1.text_input("Doc No.")
+ref_po = c2.text_input("Ref PO")
 date_issue = c3.date_input("Date", datetime.now())
 
-st.subheader("🏢 Part 2: Project & Contact Information")
+st.subheader("🏢 Part 2")
 p1, p2 = st.columns(2)
 project_name = p1.text_input("Project Name")
-site_location = p1.text_input("Site / Location")
-contact_client = p2.text_input("Contact Person (Client)")
-contact_co_ltd = p2.text_input("Contact (Smart Dev Co., Ltd.)")
-engineer_name = st.text_input("Engineer Name (Prepared By)")
+site_location = p1.text_input("Site")
+contact_client = p2.text_input("Client")
+contact_co_ltd = p2.text_input("Smart Dev Contact")
+engineer_name = st.text_input("Engineer")
 
-st.subheader("🛠 Part 3: Service Details")
-service_type = st.selectbox(
-    "Service Type",
-    ["Project", "Commissioning", "Repairing", "Services", "Training", "Check", "Other"]
-)
-job_performed = st.text_area("Job Performed", height=150)
+st.subheader("🛠 Part 3")
+service_type = st.selectbox("Service Type", ["Project","Commissioning","Repairing","Services","Training","Check","Other"])
+job_performed = st.text_area("Job Performed")
 
-st.subheader("📸 Part 4: Photo Report")
+st.subheader("📸 Photos")
 final_photo_data = []
 
 for i in list(st.session_state.photos):
-    col_prev, col_input, col_del = st.columns([3, 5, 1])
+    col1, col2, col3 = st.columns([3,5,1])
 
-    with col_input:
-        up_img = st.file_uploader(f"Upload Image {i+1}", type=['jpg', 'png', 'jpeg'], key=f"f{i}")
+    with col2:
+        up_img = st.file_uploader(f"Image {i+1}", type=["jpg","png","jpeg"], key=f"f{i}")
         up_desc = st.text_input(f"Description {i+1}", key=f"d{i}")
 
-    with col_prev:
+    with col1:
         if up_img:
             st.image(up_img, use_container_width=True)
 
-    with col_del:
+    with col3:
         if st.button("🗑️", key=f"del{i}"):
             st.session_state.photos.remove(i)
             st.rerun()
 
     final_photo_data.append({"img": up_img, "desc": up_desc})
 
-if st.button("➕ Add More Photo"):
+if st.button("➕ Add Photo"):
     st.session_state.photos.append(max(st.session_state.photos) + 1)
     st.rerun()
 
 
-# --- GENERATE ---
-if st.button("🚀 Generate & Send Report", type="primary", use_container_width=True):
+# ---------------- GENERATE ----------------
+if st.button("🚀 Generate Report", type="primary", use_container_width=True):
     try:
-        wb = load_workbook("template.xlsx")
-        ws = wb["1"]
-        ws_temp = wb["ImageTemplate"]
+        wb = load_workbook(TEMPLATE_FILE)
+        ws = wb[MAIN_SHEET]
+        ws_temp = wb[TEMPLATE_SHEET]
 
         # Part 1–3
         write_safe(ws, "B5", doc_no)
@@ -136,80 +138,56 @@ if st.button("🚀 Generate & Send Report", type="primary", use_container_width=
                 add_image_to_excel(ws, item["img"], loc_fixed[idx])
                 write_safe(ws, desc_fixed[idx], item["desc"])
 
-        # ---------- รูปที่ 7 ขึ้นไป ----------
-extra = final_photo_data[6:]
-rows_template = ws_temp.max_row
+        # รูป 7+
+        extra = final_photo_data[6:]
+        rows_template = ws_temp.max_row
 
-# ตำแหน่งจริงใน ImageTemplate (ตรง layout)
-img_cells_template = ["A5", "A18", "A31"]
-desc_cells_template = ["H5", "H18", "H31"]
+        img_cells_template = ["A5", "A18", "A31"]
+        desc_cells_template = ["H5", "H18", "H31"]
 
-if extra:
-    start_row = ws.max_row + 2
+        if extra:
+            start_row = ws.max_row + 2
 
-    for page_i in range(0, len(extra), 3):
-        group = extra[page_i:page_i + 3]
+            for page_i in range(0, len(extra), 3):
+                group = extra[page_i:page_i+3]
 
-        # 1) copy ทั้ง template ลงมา
-        for r in range(1, rows_template + 1):
-            ws.row_dimensions[start_row + r - 1].height = ws_temp.row_dimensions[r].height
+                # copy template
+                for r in range(1, rows_template + 1):
+                    ws.row_dimensions[start_row + r - 1].height = ws_temp.row_dimensions[r].height
 
-            for c in range(1, ws_temp.max_column + 1):
-                src = ws_temp.cell(r, c)
-                dst = ws.cell(start_row + r - 1, c)
+                    for c in range(1, ws_temp.max_column + 1):
+                        src = ws_temp.cell(r, c)
+                        dst = ws.cell(start_row + r - 1, c)
+                        dst.value = src.value
+                        if src.has_style:
+                            dst.font = copy(src.font)
+                            dst.border = copy(src.border)
+                            dst.fill = copy(src.fill)
+                            dst.number_format = copy(src.number_format)
+                            dst.alignment = copy(src.alignment)
 
-                dst.value = src.value
-                if src.has_style:
-                    dst.font = copy(src.font)
-                    dst.border = copy(src.border)
-                    dst.fill = copy(src.fill)
-                    dst.number_format = copy(src.number_format)
-                    dst.alignment = copy(src.alignment)
+                # merged cells
+                for m in ws_temp.merged_cells.ranges:
+                    new_range = (
+                        f"{get_column_letter(m.min_col)}{start_row + m.min_row - 1}:"
+                        f"{get_column_letter(m.max_col)}{start_row + m.max_row - 1}"
+                    )
+                    ws.merge_cells(new_range)
 
-        # 2) copy merged cells
-        for m in ws_temp.merged_cells.ranges:
-            new_range = (
-                f"{get_column_letter(m.min_col)}{start_row + m.min_row - 1}:"
-                f"{get_column_letter(m.max_col)}{start_row + m.max_row - 1}"
-            )
-            ws.merge_cells(new_range)
+                # insert photos
+                for i, item in enumerate(group):
+                    if item["img"]:
+                        base_row = int(img_cells_template[i][1:])
+                        add_image_to_excel(ws, item["img"], f"A{start_row + base_row - 1}")
+                        write_safe(ws, f"H{start_row + base_row - 1}", item["desc"])
 
-        # 3) ใส่รูปจริง
-        for i, item in enumerate(group):
-            if item["img"]:
-                col_img = img_cells_template[i][0]
-                row_img = int(img_cells_template[i][1:])
+                start_row += rows_template + 1
 
-                col_desc = desc_cells_template[i][0]
-                row_desc = int(desc_cells_template[i][1:])
-
-                add_image_to_excel(ws, item["img"], f"{col_img}{start_row + row_img - 1}")
-                write_safe(ws, f"{col_desc}{start_row + row_desc - 1}", item["desc"])
-
-        start_row += rows_template + 1
-
-        # Save
+        # save
         output = io.BytesIO()
         wb.save(output)
 
-        # Send email
-        msg = MIMEMultipart()
-        msg['From'] = SENDER_EMAIL
-        msg['To'] = RECEIVER_EMAIL
-        msg['Subject'] = f"Report: {doc_no}"
-
-        part = MIMEBase('application', 'octet-stream')
-        part.set_payload(output.getvalue())
-        encoders.encode_base64(part)
-        part.add_header('Content-Disposition', f'attachment; filename="Report_{doc_no}.xlsx"')
-        msg.attach(part)
-
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
-            server.starttls()
-            server.login(SENDER_EMAIL, SENDER_PASSWORD)
-            server.send_message(msg)
-
-        st.success("✅ สร้างรายงานเรียบร้อย")
+        st.success("✅ สร้างรายงานสำเร็จ")
         st.download_button("📥 Download Excel", output.getvalue(), f"Report_{doc_no}.xlsx")
 
     except Exception as e:
