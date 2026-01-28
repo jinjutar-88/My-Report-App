@@ -9,6 +9,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 from copy import copy
+from openpyxl.cell.cell import MergedCell
 
 # ---------------- CONFIG ----------------
 SENDER_EMAIL = "jinjutar.smartdev@gmail.com"
