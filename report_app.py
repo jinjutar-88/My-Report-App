@@ -56,9 +56,9 @@ def write_safe(ws, cell_addr, value):
 st.set_page_config(page_title="Smart Dev Report Generator", layout="wide")
 if 'photos' not in st.session_state: st.session_state.photos = [0]
 
-st.title("🚀 Smart Dev Report Generator v0.5.1")
+st.title("🚀 Smart Dev Report Generator v0.5.2")
 
-# --- ส่วนรับข้อมูล (แบบไม่แยก Part / No Expander) ---
+# --- ข้อมูลเอกสาร ---
 st.subheader("📄 Document Details")
 c1, c2, c3 = st.columns(3)
 doc_no = c1.text_input("Doc. No.")
@@ -66,6 +66,7 @@ ref_po = c2.text_input("Ref. PO No.")
 date_issue = c3.date_input("Date", datetime.now())
 
 st.markdown("---")
+# --- ข้อมูลโครงการและลูกค้า ---
 st.subheader("🏢 Project & Contact Information")
 p1, p2 = st.columns(2)
 project_name = p1.text_input("Project Name")
@@ -75,10 +76,13 @@ contact_co_ltd = p2.text_input("Contact (Smart Dev Co., Ltd.)")
 engineer_name = st.text_input("Engineer Name (Prepared By)")
 
 st.markdown("---")
+# --- ข้อมูลบริการ (Type กลับมาแล้ว!) ---
 st.subheader("🛠 Service Details")
+service_type = st.selectbox("Service Type", ["Project", "Commissioning", "Repairing", "Services", "Training", "Check", "Other"])
 job_performed = st.text_area("Job Performed (รายละเอียดงาน)", height=150)
 
 st.markdown("---")
+# --- ส่วนรูปภาพ ---
 st.subheader("📸 Photo Report")
 final_photo_data = []
 for i in list(st.session_state.photos):
@@ -94,13 +98,12 @@ for i in list(st.session_state.photos):
                 st.session_state.photos.remove(i)
                 st.rerun()
         final_photo_data.append({"img": up_img, "desc": up_desc})
-        st.write("")
 
 if st.button("➕ Add More Photo"):
     st.session_state.photos.append(max(st.session_state.photos) + 1 if st.session_state.photos else 0)
     st.rerun()
 
-# --- 4. GENERATE & SEND ---
+# --- 4. ENGINE ---
 st.markdown("---")
 if st.button("🚀 Generate & Send Report", type="primary", use_container_width=True):
     try:
@@ -108,7 +111,7 @@ if st.button("🚀 Generate & Send Report", type="primary", use_container_width=
         ws = wb.active 
         ws_temp = wb["ImageTemplate"]
 
-        # เขียนข้อมูล Part 1-3
+        # เขียนข้อมูลลง Excel
         write_safe(ws, "B5", doc_no)
         write_safe(ws, "F6", ref_po)
         write_safe(ws, "J5", date_issue.strftime('%d/%m/%Y'))
@@ -117,13 +120,16 @@ if st.button("🚀 Generate & Send Report", type="primary", use_container_width=
         write_safe(ws, "C9", contact_client)
         write_safe(ws, "A7", contact_co_ltd)
         write_safe(ws, "B42", engineer_name)
+        
+        # เขียน Service Type (ลงช่อง D15) และ Job Performed (ลงช่อง D17)
+        write_safe(ws, "D15", service_type)
         write_safe(ws, "D17", job_performed) 
 
-        # พิกัดรูปภาพหน้าแรก
+        # พิกัดรูปหน้าแรก
         loc_fixed = ["A49", "A62", "A75", "A92", "A105", "A118"]
         desc_fixed = ["H49", "H62", "H75", "H92", "H105", "H118"]
         
-        # Logic Pagination รูปที่ 7+
+        # Logic หน้าเสริม (รูปที่ 7+)
         start_row, header_h, block_h, gap_h = 131, 4, 13, 4
 
         for idx, item in enumerate(final_photo_data):
@@ -160,6 +166,7 @@ if st.button("🚀 Generate & Send Report", type="primary", use_container_width=
             add_image_to_excel(ws, item["img"], p_loc)
             write_safe(ws, d_loc, item["desc"])
 
+        # บันทึกและส่งเมล
         output = io.BytesIO()
         wb.save(output)
         msg = MIMEMultipart()
@@ -175,7 +182,7 @@ if st.button("🚀 Generate & Send Report", type="primary", use_container_width=
             server.login(SENDER_EMAIL, SENDER_PASSWORD)
             server.send_message(msg)
             
-        st.success("✅ สร้างและส่งรายงานสำเร็จ!")
+        st.success("✅ ส่งรายงานเรียบร้อย พร้อมข้อมูลครบถ้วน!")
         st.download_button("📥 Download Excel", output.getvalue(), f"Report_{doc_no}.xlsx")
     except Exception as e:
         st.error(f"🚨 ข้อผิดพลาด: {e}")
