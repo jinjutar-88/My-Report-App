@@ -136,50 +136,57 @@ if st.button("🚀 Generate & Send Report", type="primary", use_container_width=
                 add_image_to_excel(ws, item["img"], loc_fixed[idx])
                 write_safe(ws, desc_fixed[idx], item["desc"])
 
-        # รูป 7+
-        extra = final_photo_data[6:]
-        rows_template = 43
+        # ---------- รูปที่ 7 ขึ้นไป ----------
+extra = final_photo_data[6:]
+rows_template = ws_temp.max_row
 
-        if extra:
-            start_row = ws.max_row + 2
+# ตำแหน่งจริงใน ImageTemplate (ตรง layout)
+img_cells_template = ["A5", "A18", "A31"]
+desc_cells_template = ["H5", "H18", "H31"]
 
-            for page_i in range(0, len(extra), 3):
-                group = extra[page_i:page_i + 3]
+if extra:
+    start_row = ws.max_row + 2
 
-                # copy template block
-                for r in range(1, rows_template + 1):
-                    ws.row_dimensions[start_row + r - 1].height = ws_temp.row_dimensions[r].height
-                    for c in range(1, 12):
-                        src = ws_temp.cell(r, c)
-                        dst = ws.cell(start_row + r - 1, c)
-                        dst.value = src.value
-                        if src.has_style:
-                            dst.font = copy(src.font)
-                            dst.border = copy(src.border)
-                            dst.fill = copy(src.fill)
-                            dst.number_format = copy(src.number_format)
-                            dst.alignment = copy(src.alignment)
+    for page_i in range(0, len(extra), 3):
+        group = extra[page_i:page_i + 3]
 
-                # merged cells
-                for m in ws_temp.merged_cells.ranges:
-                    new_range = f"{get_column_letter(m.min_col)}{start_row + m.min_row - 1}:{get_column_letter(m.max_col)}{start_row + m.max_row - 1}"
-                    ws.merge_cells(new_range)
+        # 1) copy ทั้ง template ลงมา
+        for r in range(1, rows_template + 1):
+            ws.row_dimensions[start_row + r - 1].height = ws_temp.row_dimensions[r].height
 
-                # insert photos
-                imagetemplate = ["A5", "A18", "A31"]
-                desc_cells_template = ["H5", "H18", "H31"]
+            for c in range(1, ws_temp.max_column + 1):
+                src = ws_temp.cell(r, c)
+                dst = ws.cell(start_row + r - 1, c)
 
-                for i, item in enumerate(group):
-                    if item["img"]:
-                        col_img = img_cells_template[i][0]
-                        row_img = int(img_cells_template[i][1:])
-                        col_desc = desc_cells_template[i][0]
-                        row_desc = int(desc_cells_template[i][1:])
+                dst.value = src.value
+                if src.has_style:
+                    dst.font = copy(src.font)
+                    dst.border = copy(src.border)
+                    dst.fill = copy(src.fill)
+                    dst.number_format = copy(src.number_format)
+                    dst.alignment = copy(src.alignment)
 
-                        add_image_to_excel(ws, item["img"], f"{col_img}{start_row + row_img - 1}")
-                        write_safe(ws, f"{col_desc}{start_row + row_desc - 1}", item["desc"])
+        # 2) copy merged cells
+        for m in ws_temp.merged_cells.ranges:
+            new_range = (
+                f"{get_column_letter(m.min_col)}{start_row + m.min_row - 1}:"
+                f"{get_column_letter(m.max_col)}{start_row + m.max_row - 1}"
+            )
+            ws.merge_cells(new_range)
 
-                start_row += rows_template + 1
+        # 3) ใส่รูปจริง
+        for i, item in enumerate(group):
+            if item["img"]:
+                col_img = img_cells_template[i][0]
+                row_img = int(img_cells_template[i][1:])
+
+                col_desc = desc_cells_template[i][0]
+                row_desc = int(desc_cells_template[i][1:])
+
+                add_image_to_excel(ws, item["img"], f"{col_img}{start_row + row_img - 1}")
+                write_safe(ws, f"{col_desc}{start_row + row_desc - 1}", item["desc"])
+
+        start_row += rows_template + 1
 
         # Save
         output = io.BytesIO()
