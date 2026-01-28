@@ -158,7 +158,8 @@ if st.button("🚀 Generate Report"):
                         src = ws_temp.cell(r, c)
                         dst = ws.cell(start_row + r - 1, c)
 
-                        dst.value = src.value
+                        if not isinstance(dst, MergedCell):
+                            dst.value = src.value
                         if src.has_style:
                             dst.font = copy(src.font)
                             dst.border = copy(src.border)
