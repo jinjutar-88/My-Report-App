@@ -117,10 +117,13 @@ if st.button("🚀 Generate Report"):
         write_safe(ws, "B5", doc_no)
         write_safe(ws, "F6", ref_po)
         write_safe(ws, "J5", date_issue.strftime("%d/%m/%Y"))
-        write_safe(ws, "B16", project)
-        write_safe(ws, "H7", site)
-        write_safe(ws, "B42", engineer)
-        write_safe(ws, "D17", job)
+        write_safe(ws, "B16", project_name)
+        write_safe(ws, "H7", site_location)
+        write_safe(ws, "C9", contact_client)
+        write_safe(ws, "A7", contact_co_ltd)
+        write_safe(ws, "B42", engineer_name)
+        write_safe(ws, "D15", service_type)
+        write_safe(ws, "D17", job perfomed)
 
         # Images 1–6 on first page
         img_cells = ["A49","A62","A75","A92","A105","A118"]
