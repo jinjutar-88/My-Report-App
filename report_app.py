@@ -157,40 +157,40 @@ if st.button("🚀 Generate & Send Report", type="primary", use_container_width=
                     write_safe(new_ws, desc_cells[i], item["desc"])
 
         # Save output
-output = io.BytesIO()
-wb.save(output)
+        output = io.BytesIO()
+        wb.save(output)
 
-# -------------------
-# SEND EMAIL
-# -------------------
-msg = MIMEMultipart()
-msg['From'] = SENDER_EMAIL
-msg['To'] = RECEIVER_EMAIL
-msg['Subject'] = f"Report: {doc_no}"
+        # -------------------
+        # SEND EMAIL
+        # -------------------
+        msg = MIMEMultipart()
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = RECEIVER_EMAIL
+        msg['Subject'] = f"Report: {doc_no}"
 
-part = MIMEBase('application', 'octet-stream')
-part.set_payload(output.getvalue())
-encoders.encode_base64(part)
-part.add_header(
-    'Content-Disposition',
-    f'attachment; filename="Report_{doc_no}.xlsx"'
-)
-msg.attach(part)
+        part = MIMEBase('application', 'octet-stream')
+        part.set_payload(output.getvalue())
+        encoders.encode_base64(part)
+        part.add_header(
+            'Content-Disposition',
+            f'attachment; filename="Report_{doc_no}.xlsx"'
+        )
+        msg.attach(part)
 
-with smtplib.SMTP('smtp.gmail.com', 587) as server:
-    server.starttls()
-    server.login(SENDER_EMAIL, SENDER_PASSWORD)
-    server.send_message(msg)
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.send_message(msg)
 
-# -------------------
-# UI feedback
-# -------------------
-st.success("✅ สร้างรายงานและส่งเมลเรียบร้อยแล้ว!")
-st.download_button(
-    "📥 Download Excel (สำรอง)",
-    output.getvalue(),
-    f"Report_{doc_no}.xlsx"
-)
+        # -------------------
+        # UI feedback
+        # -------------------
+        st.success("✅ สร้างรายงานและส่งเมลเรียบร้อยแล้ว!")
+        st.download_button(
+            "📥 Download Excel (สำรอง)",
+            output.getvalue(),
+            f"Report_{doc_no}.xlsx"
+        )
 
     except Exception as e:
         st.error(f"🚨 Error: {e}")
