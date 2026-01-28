@@ -123,7 +123,7 @@ if st.button("🚀 Generate Report"):
         write_safe(ws, "A7", contact_co_ltd)
         write_safe(ws, "B42", engineer_name)
         write_safe(ws, "D15", service_type)
-        write_safe(ws, "D17", job perfomed)
+        write_safe(ws, "D17", job_perfomed)
 
         # Images 1–6 on first page
         img_cells = ["A49","A62","A75","A92","A105","A118"]
