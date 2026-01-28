@@ -166,13 +166,18 @@ if st.button("🚀 Generate & Send Report", type="primary", use_container_width=
                     ws.merge_cells(new_range)
 
                 # insert photos
-                img_rows = [5, 18, 31]
-                desc_rows = [5, 18, 31]
+                iimg_cells_template = ["A5", "A18", "A31"]
+                desc_cells_template = ["H5", "H18", "H31"]
 
                 for i, item in enumerate(group):
                     if item["img"]:
-                        add_image_to_excel(ws, item["img"], f"A{start_row + img_rows[i] - 1}")
-                        write_safe(ws, f"H{start_row + desc_rows[i] - 1}", item["desc"])
+                    col_img = img_cells_template[i][0]
+                    row_img = int(img_cells_template[i][1:])
+                    col_desc = desc_cells_template[i][0]
+                    row_desc = int(desc_cells_template[i][1:])
+
+                    add_image_to_excel(ws, item["img"], f"{col_img}{start_row + row_img - 1}")
+                    write_safe(ws, f"{col_desc}{start_row + row_desc - 1}", item["desc"])
 
                 start_row += rows_template + 1
 
