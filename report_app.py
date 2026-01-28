@@ -56,18 +56,17 @@ def write_safe(ws, cell_addr, value):
 st.set_page_config(page_title="Smart Dev Report Generator", layout="wide")
 if 'photos' not in st.session_state: st.session_state.photos = [0]
 
-st.title("🚀 Smart Dev Report Generator v0.5.2")
+st.title("🚀 Smart Dev Report Generator v0.5.3")
 
-# --- ข้อมูลเอกสาร ---
-st.subheader("📄 Document Details")
+# --- ส่วนกรอกข้อมูลทั้งหมด (แสดงเรียงกัน) ---
+st.subheader("📄 Part 1: Document Details")
 c1, c2, c3 = st.columns(3)
 doc_no = c1.text_input("Doc. No.")
 ref_po = c2.text_input("Ref. PO No.")
 date_issue = c3.date_input("Date", datetime.now())
 
 st.markdown("---")
-# --- ข้อมูลโครงการและลูกค้า ---
-st.subheader("🏢 Project & Contact Information")
+st.subheader("🏢 Part 2: Project & Contact Information")
 p1, p2 = st.columns(2)
 project_name = p1.text_input("Project Name")
 site_location = p1.text_input("Site / Location")
@@ -76,14 +75,12 @@ contact_co_ltd = p2.text_input("Contact (Smart Dev Co., Ltd.)")
 engineer_name = st.text_input("Engineer Name (Prepared By)")
 
 st.markdown("---")
-# --- ข้อมูลบริการ (Type กลับมาแล้ว!) ---
-st.subheader("🛠 Service Details")
+st.subheader("🛠 Part 3: Service Details")
 service_type = st.selectbox("Service Type", ["Project", "Commissioning", "Repairing", "Services", "Training", "Check", "Other"])
 job_performed = st.text_area("Job Performed (รายละเอียดงาน)", height=150)
 
 st.markdown("---")
-# --- ส่วนรูปภาพ ---
-st.subheader("📸 Photo Report")
+st.subheader("📸 Part 4: Photo Report")
 final_photo_data = []
 for i in list(st.session_state.photos):
     with st.container():
@@ -111,7 +108,7 @@ if st.button("🚀 Generate & Send Report", type="primary", use_container_width=
         ws = wb.active 
         ws_temp = wb["ImageTemplate"]
 
-        # เขียนข้อมูลลง Excel
+        # เขียนข้อมูล Part 1-3
         write_safe(ws, "B5", doc_no)
         write_safe(ws, "F6", ref_po)
         write_safe(ws, "J5", date_issue.strftime('%d/%m/%Y'))
@@ -120,17 +117,19 @@ if st.button("🚀 Generate & Send Report", type="primary", use_container_width=
         write_safe(ws, "C9", contact_client)
         write_safe(ws, "A7", contact_co_ltd)
         write_safe(ws, "B42", engineer_name)
-        
-        # เขียน Service Type (ลงช่อง D15) และ Job Performed (ลงช่อง D17)
         write_safe(ws, "D15", service_type)
         write_safe(ws, "D17", job_performed) 
 
-        # พิกัดรูปหน้าแรก
+        # พิกัดคงที่ 1-6
         loc_fixed = ["A49", "A62", "A75", "A92", "A105", "A118"]
         desc_fixed = ["H49", "H62", "H75", "H92", "H105", "H118"]
         
         # Logic หน้าเสริม (รูปที่ 7+)
-        start_row, header_h, block_h, gap_h = 131, 4, 13, 4
+        # เริ่มต้นแถว 131 เป็นต้นไป
+        current_cursor = 131
+        header_h = 4
+        block_h = 13
+        gap_h = 4 
 
         for idx, item in enumerate(final_photo_data):
             if not item["img"]: continue
@@ -138,35 +137,48 @@ if st.button("🚀 Generate & Send Report", type="primary", use_container_width=
                 p_loc, d_loc = loc_fixed[idx], desc_fixed[idx]
             else:
                 rel_idx = idx - 6
-                page_num = rel_idx // 3
-                pos_in_page = rel_idx % 3
-                page_offset = page_num * (header_h + (3 * block_h) + gap_h)
-                
-                if pos_in_page == 0:
-                    h_start = start_row + page_offset
+                # ทุกๆ 3 รูป ให้แทรกหัวกระดาษ
+                if rel_idx % 3 == 0:
+                    if rel_idx > 0: current_cursor += gap_h # เว้นช่องว่างระหว่างหน้า
+                    
+                    # --- COPY HEADER (Rows 1-4) ---
                     for r in range(1, header_h + 1):
-                        ws.row_dimensions[h_start + r - 1].height = ws_temp.row_dimensions[r].height
+                        ws.row_dimensions[current_cursor].height = ws_temp.row_dimensions[r].height
                         for c in range(1, 12):
-                            copy_style(ws_temp.cell(row=r, column=c), ws.cell(row=h_start + r - 1, column=c))
+                            copy_style(ws_temp.cell(row=r, column=c), ws.cell(row=current_cursor, column=c))
+                            # Copy ค่าในหัวกระดาษมาด้วย (เช่น ข้อความ Photo Report)
+                            ws.cell(row=current_cursor, column=c).value = ws_temp.cell(row=r, column=c).value
+                        
+                        # Copy Merged Cells เฉพาะของ Header
+                        for m_range in ws_temp.merged_cells.ranges:
+                            if m_range.min_row == r:
+                                new_m = f"{get_column_letter(m_range.min_col)}{current_cursor}:{get_column_letter(m_range.max_col)}{current_cursor}"
+                                if new_m not in ws.merged_cells: ws.merge_cells(new_m)
+                        current_cursor += 1
                 
-                p_row = start_row + page_offset + header_h + (pos_in_page * block_h)
+                # --- COPY IMAGE BLOCK (Rows 5-17) ---
+                p_row = current_cursor
                 for r in range(0, block_h):
                     target_r = p_row + r
                     ws.row_dimensions[target_r].height = ws_temp.row_dimensions[5 + r].height
                     for c in range(1, 12):
                         copy_style(ws_temp.cell(row=5 + r, column=c), ws.cell(row=target_r, column=c))
                 
+                # Copy Merged Cells ของ Block รูป
                 for m_range in ws_temp.merged_cells.ranges:
                     if m_range.min_row >= 5 and m_range.max_row <= 17:
-                        t_o, b_o = m_range.min_row - 5, m_range.max_row - 5
+                        t_o = m_range.min_row - 5
+                        b_o = m_range.max_row - 5
                         new_m = f"{get_column_letter(m_range.min_col)}{p_row + t_o}:{get_column_letter(m_range.max_col)}{p_row + b_o}"
                         if new_m not in ws.merged_cells: ws.merge_cells(new_m)
+                
                 p_loc, d_loc = f"A{p_row}", f"H{p_row}"
+                current_cursor += block_h
 
             add_image_to_excel(ws, item["img"], p_loc)
             write_safe(ws, d_loc, item["desc"])
 
-        # บันทึกและส่งเมล
+        # ส่งเมล
         output = io.BytesIO()
         wb.save(output)
         msg = MIMEMultipart()
@@ -182,7 +194,7 @@ if st.button("🚀 Generate & Send Report", type="primary", use_container_width=
             server.login(SENDER_EMAIL, SENDER_PASSWORD)
             server.send_message(msg)
             
-        st.success("✅ ส่งรายงานเรียบร้อย พร้อมข้อมูลครบถ้วน!")
+        st.success("✅ ส่งรายงานสำเร็จ! ข้อมูลและหัวกระดาษครบถ้วน")
         st.download_button("📥 Download Excel", output.getvalue(), f"Report_{doc_no}.xlsx")
     except Exception as e:
         st.error(f"🚨 ข้อผิดพลาด: {e}")
