@@ -131,21 +131,55 @@ if st.button("🚀 Generate Report"):
                 add_image_to_excel(ws, item["img"], img_cells[i])
                 write_safe(ws, desc_cells[i], item["desc"])
 
-        # Images 7+ → new sheet
-        extra = final_photo_data[6:]
-        pages = [extra[i:i+3] for i in range(0, len(extra), 3)]
+        # ===== รูปที่ 7+ ต่อท้ายใน sheet เดียว โดยใช้ ImageTemplate =====
 
-        for p, page in enumerate(pages, start=1):
-            new_ws = wb.copy_worksheet(ws_temp)
-            new_ws.title = f"PhotoPage{p}"
+        extra_photos = final_photo_data[6:]
 
-            img_cells_temp = ["A5","A18","A31"]
-            desc_cells_temp = ["H5","H18","H31"]
+        if extra_photos:
+            block_height = ws_temp.max_row  # ความสูงของ template ทั้งหน้า
 
-            for i, item in enumerate(page):
-                if item["img"]:
-                    add_image_to_excel(new_ws, item["img"], img_cells_temp[i])
-                    write_safe(new_ws, desc_cells_temp[i], item["desc"])
+            # แถวเริ่มต้น = ต่อจากรูปที่ 6 (A118)
+            start_row = 119
+
+            for page_i in range(0, len(extra_photos), 3):
+                group = extra_photos[page_i:page_i+3]
+
+                # --- copy template ทั้ง block ---
+                for r in range(1, ws_temp.max_row + 1):
+                    ws.row_dimensions[start_row + r - 1].height = ws_temp.row_dimensions[r].height
+
+                    for c in range(1, ws_temp.max_column + 1):
+                        src = ws_temp.cell(r, c)
+                        dst = ws.cell(start_row + r - 1, c)
+
+                        dst.value = src.value
+
+                        if src.has_style:
+                            dst.font = copy(src.font)
+                            dst.border = copy(src.border)
+                            dst.fill = copy(src.fill)
+                            dst.number_format = copy(src.number_format)
+                            dst.alignment = copy(src.alignment)
+
+                # --- copy merged cells ---
+                for m in ws_temp.merged_cells.ranges:
+                    new_range = (
+                        f"{get_column_letter(m.min_col)}{start_row + m.min_row - 1}:"
+                        f"{get_column_letter(m.max_col)}{start_row + m.max_row - 1}"
+                    )
+                    ws.merge_cells(new_range)
+
+                # --- ใส่รูปลงในตำแหน่งเดิมของ template ---
+                img_rows = [5, 18, 31]
+                desc_rows = [5, 18, 31]
+
+                for i, item in enumerate(group):
+                    if item["img"]:
+                        add_image_to_excel(ws, item["img"], f"A{start_row + img_rows[i] - 1}")
+                        write_safe(ws, f"H{start_row + desc_rows[i] - 1}", item["desc"])
+
+                # เลื่อน cursor ไป block ถัดไป
+                start_row += block_height + 1
 
         # Save output
         output = io.BytesIO()
