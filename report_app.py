@@ -13,7 +13,7 @@ from PIL import Image as PILImage   # <<< เพิ่ม
 
 # --- 1. CONFIGURATION ---
 SENDER_EMAIL = "jinjutar.smartdev@gmail.com"
-SENDER_PASSWORD = "YOUR_APP_PASSWORD"
+SENDER_PASSWORD = "UZFS BDTC XCLZ RZSQ"
 RECEIVER_EMAIL = "jinjutar.smartdev@gmail.com"
 
 # --- 2. HELPERS ---
