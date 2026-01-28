@@ -9,37 +9,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 from copy import copy
-# ---------- PREVIEW แบบหน้า Report ----------
-st.markdown("---")
-st.subheader("👀 Preview หน้า Report")
-
-valid_items = [x for x in final_photo_data if x["img"]]
-
-if not valid_items:
-    st.info("ยังไม่มีรูปสำหรับ preview")
-else:
-    for i in range(0, len(valid_items), 2):
-        col1, col2 = st.columns(2)
-
-        # รูปซ้าย
-        with col1:
-            item = valid_items[i]
-            st.markdown(f"**Photo {i+1}**")
-            st.image(item["img"], use_container_width=True)
-            st.caption(item["desc"] or "")
-
-        # รูปขวา (ถ้ามี)
-        if i + 1 < len(valid_items):
-            with col2:
-                item = valid_items[i+1]
-                st.markdown(f"**Photo {i+2}**")
-                st.image(item["img"], use_container_width=True)
-                st.caption(item["desc"] or "")
-# <<< ADDED
-from PIL import Image as PILImage
-import excel2img
-import tempfile
-import os
+from PIL import Image as PILImage   # <<< เพิ่ม
 
 # --- 1. CONFIGURATION ---
 SENDER_EMAIL = "jinjutar.smartdev@gmail.com"
@@ -56,7 +26,7 @@ def copy_style(source_cell, target_cell):
         target_cell.protection = copy(source_cell.protection)
         target_cell.alignment = copy(source_cell.alignment)
 
-# <<< ADDED: resize รูปอัตโนมัติ
+# <<< ฟังก์ชันใหม่: ย่อขนาดรูปอัตโนมัติ
 def resize_image(uploaded_file, max_size=1400):
     img = PILImage.open(uploaded_file)
 
@@ -71,9 +41,11 @@ def resize_image(uploaded_file, max_size=1400):
     return buffer
 
 def add_image_to_excel(ws, img_file, cell_address):
-    if img_file is None: return
+    if img_file is None: 
+        return
 
-    resized = resize_image(img_file)  # <<< CHANGED
+    # <<< แก้ตรงนี้ให้ resize ก่อน
+    resized = resize_image(img_file)
     img = Image(resized)
 
     max_w, max_h = 0, 0
@@ -86,6 +58,7 @@ def add_image_to_excel(ws, img_file, cell_address):
             for row in range(m_range.min_row, m_range.max_row + 1):
                 max_h += (ws.row_dimensions[row].height or 15) * 1.33
             break
+
     if not found_range:
         max_w, max_h = 350, 250
 
@@ -101,19 +74,9 @@ def write_safe(ws, cell_addr, value):
             return
     ws[cell_addr] = value
 
-# <<< ADDED: แปลง Excel → รูป preview
-def render_excel_preview(wb):
-    temp_excel = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-    temp_img = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-
-    wb.save(temp_excel.name)
-    excel2img.export_img(temp_excel.name, temp_img.name, "", "A1:L250")
-
-    return temp_img.name
-
 # --- 3. STREAMLIT UI ---
 st.set_page_config(page_title="Smart Dev Report Generator", layout="wide")
-if 'photos' not in st.session_state:
+if 'photos' not in st.session_state: 
     st.session_state.photos = [0]
 
 st.title("🚀 Smart Dev Report Generator v0.7.1")
@@ -149,7 +112,7 @@ for i in list(st.session_state.photos):
             up_img = st.file_uploader(f"Upload Image {i+1}", type=['jpg','png','jpeg'], key=f"f{i}")
             up_desc = st.text_input(f"Description {i+1}", key=f"d{i}")
         with col_prev:
-            if up_img:
+            if up_img: 
                 st.image(up_img, use_container_width=True)
         with col_del:
             if st.button("🗑️", key=f"del{i}"):
@@ -158,17 +121,14 @@ for i in list(st.session_state.photos):
         final_photo_data.append({"img": up_img, "desc": up_desc})
 
 if st.button("➕ Add More Photo"):
-    st.session_state.photos.append(max(st.session_state.photos) + 1)
+    st.session_state.photos.append(max(st.session_state.photos) + 1 if st.session_state.photos else 0)
     st.rerun()
 
-# ---------- PREVIEW ----------
-st.markdown("---")
-st.subheader("👀 Preview Report (เหมือนหน้า Excel)")
-
-if st.button("Preview หน้า Report"):
+# --- 4. ENGINE ---
+if st.button("🚀 Generate & Send Report", type="primary", use_container_width=True):
     try:
         wb = load_workbook("template.xlsx")
-        ws = wb.active
+        ws = wb.active 
         ws_temp = wb["ImageTemplate"]
 
         write_safe(ws, "B5", doc_no)
@@ -180,22 +140,79 @@ if st.button("Preview หน้า Report"):
         write_safe(ws, "A7", contact_co_ltd)
         write_safe(ws, "B42", engineer_name)
         write_safe(ws, "D15", service_type)
-        write_safe(ws, "D17", job_performed)
+        write_safe(ws, "D17", job_performed) 
 
         loc_fixed = ["A49", "A62", "A75", "A92", "A105", "A118"]
         desc_fixed = ["H49", "H62", "H75", "H92", "H105", "H118"]
+        
+        current_cursor = 174 
+        header_h = 4
+        block_h = 13
 
         for idx, item in enumerate(final_photo_data):
-            if idx >= 6: break
-            if item["img"]:
-                add_image_to_excel(ws, item["img"], loc_fixed[idx])
-                write_safe(ws, desc_fixed[idx], item["desc"])
+            if not item["img"]: continue
+            
+            if idx < 6:
+                p_loc, d_loc = loc_fixed[idx], desc_fixed[idx]
+            else:
+                rel_idx = idx - 6
+                if rel_idx % 3 == 0:
+                    for r in range(1, header_h + 1):
+                        target_row = current_cursor
+                        ws.row_dimensions[target_row].height = ws_temp.row_dimensions[r].height
+                        for c in range(1, 12):
+                            source_cell = ws_temp.cell(row=r, column=c)
+                            target_cell = ws.cell(row=target_row, column=c)
+                            target_cell.value = source_cell.value
+                            copy_style(source_cell, target_cell)
 
-        img_path = render_excel_preview(wb)
-        st.image(img_path, use_container_width=True)
+                        for m_range in ws_temp.merged_cells.ranges:
+                            if m_range.min_row == r:
+                                new_m = f"{get_column_letter(m_range.min_col)}{target_row}:{get_column_letter(m_range.max_col)}{target_row}"
+                                if new_m not in ws.merged_cells: 
+                                    ws.merge_cells(new_m)
+                        current_cursor += 1
+                
+                p_row = current_cursor
+                for r in range(0, block_h):
+                    target_row = p_row + r
+                    ws.row_dimensions[target_row].height = ws_temp.row_dimensions[5 + r].height
+                    for c in range(1, 12):
+                        source_cell = ws_temp.cell(row=5 + r, column=c)
+                        target_cell = ws.cell(row=target_row, column=c)
+                        copy_style(source_cell, target_cell)
+                
+                for m_range in ws_temp.merged_cells.ranges:
+                    if 5 <= m_range.min_row <= 17:
+                        t_o, b_o = m_range.min_row - 5, m_range.max_row - 5
+                        new_m = f"{get_column_letter(m_range.min_col)}{p_row + t_o}:{get_column_letter(m_range.max_col)}{p_row + b_o}"
+                        if new_m not in ws.merged_cells: 
+                            ws.merge_cells(new_m)
+                
+                p_loc, d_loc = f"A{p_row}", f"H{p_row}"
+                current_cursor += block_h
+
+            add_image_to_excel(ws, item["img"], p_loc)
+            write_safe(ws, d_loc, item["desc"])
+
+        output = io.BytesIO()
+        wb.save(output)
+
+        msg = MIMEMultipart()
+        msg['From'], msg['To'], msg['Subject'] = SENDER_EMAIL, RECEIVER_EMAIL, f"Report: {doc_no}"
+        part = MIMEBase('application', 'octet-stream')
+        part.set_payload(output.getvalue())
+        encoders.encode_base64(part)
+        part.add_header('Content-Disposition', f'attachment; filename="Report_{doc_no}.xlsx"')
+        msg.attach(part)
+
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.send_message(msg)
+
+        st.success("✅ สร้างและส่งรายงานเรียบร้อย!")
+        st.download_button("📥 Download Excel", output.getvalue(), f"Report_{doc_no}.xlsx")
 
     except Exception as e:
-        st.error(f"Preview error: {e}")
-
-# --- 4. ENGINE (Generate & Send) ---
-# >>> โค้ด generate & send ของคุณเดิม ใช้ได้เหมือนเดิมทั้งหมด <<<
+        st.error(f"🚨 ข้อผิดพลาด: {e}")
