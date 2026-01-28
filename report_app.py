@@ -15,7 +15,7 @@ SENDER_EMAIL = "jinjutar.smartdev@gmail.com"
 SENDER_PASSWORD = "uzfs bdtc xclz rzsq"
 RECEIVER_EMAIL = "jinjutar.smartdev@gmail.com"
 
-# --- 2. HELPERS (Fix Error min_col_letter) ---
+# --- 2. HELPERS (Fix Error: No min_col_letter) ---
 def copy_style(source_cell, target_cell):
     if source_cell.has_style:
         target_cell.font = copy(source_cell.font)
@@ -32,8 +32,8 @@ def add_image_to_excel(ws, img_file, cell_address):
     
     max_w, max_h = 0, 0
     found_range = None
+    # ตรวจสอบพิกัดใน Merged Cells
     for m_range in ws.merged_cells.ranges:
-        # ตรวจสอบว่า cell อยู่ใน range หรือไม่ (ใช้ตรรกะพิกัดแทน)
         if ws[cell_address].coordinate in m_range:
             found_range = m_range
             for col in range(m_range.min_col, m_range.max_col + 1):
@@ -55,13 +55,14 @@ def write_safe(ws, cell_addr, value):
             return
     ws[cell_addr] = value
 
-# --- 3. STREAMLIT UI (ครบทุก Part เรียงต่อกัน) ---
+# --- 3. STREAMLIT UI ---
 st.set_page_config(page_title="Smart Dev Report Generator", layout="wide")
 if 'photos' not in st.session_state: st.session_state.photos = [0]
 
-st.title("🚀 Smart Dev Report Generator v0.6")
+st.title("🚀 Smart Dev Report Generator v0.7")
 
-st.subheader("📄 Part 1-3: Project Details")
+# --- ส่วนกรอกข้อมูล Part 1-3 ---
+st.subheader("📄 Document & Project Details")
 c1, c2, c3 = st.columns(3)
 doc_no = c1.text_input("Doc. No.")
 ref_po = c2.text_input("Ref. PO No.")
@@ -74,18 +75,18 @@ contact_client = p2.text_input("Contact Person (Client)")
 contact_co_ltd = p2.text_input("Contact (Smart Dev Co., Ltd.)")
 engineer_name = st.text_input("Engineer Name")
 
-service_type = st.selectbox("Type", ["Project", "Commissioning", "Repairing", "Services", "Training", "Check", "Other"])
+service_type = st.selectbox("Service Type", ["Project", "Commissioning", "Repairing", "Services", "Training", "Check", "Other"])
 job_performed = st.text_area("Job Performed", height=100)
 
 st.markdown("---")
-st.subheader("📸 Part 4: Photo Report")
+st.subheader("📸 Photo Report")
 final_photo_data = []
 for i in list(st.session_state.photos):
     with st.container():
         col_prev, col_input, col_del = st.columns([3, 5, 1])
         with col_input:
-            up_img = st.file_uploader(f"Upload Image {i+1}", type=['jpg','png','jpeg'], key=f"f{i}")
-            up_desc = st.text_input(f"Description {i+1}", key=f"d{i}")
+            up_img = st.file_uploader(f"รูปที่ {i+1}", type=['jpg','png','jpeg'], key=f"f{i}")
+            up_desc = st.text_input(f"คำบรรยาย {i+1}", key=f"d{i}")
         with col_prev:
             if up_img: st.image(up_img, use_container_width=True)
         with col_del:
@@ -94,18 +95,18 @@ for i in list(st.session_state.photos):
                 st.rerun()
         final_photo_data.append({"img": up_img, "desc": up_desc})
 
-if st.button("➕ Add More Photo"):
+if st.button("➕ เพิ่มรูป"):
     st.session_state.photos.append(max(st.session_state.photos) + 1 if st.session_state.photos else 0)
     st.rerun()
 
-# --- 4. ENGINE (Logic จัดหน้าแบบ 3 รูปต่อหน้า) ---
-if st.button("🚀 Generate & Send Report", type="primary"):
+# --- 4. ENGINE (จัดหน้าต่อเนื่อง ไม่เว้นบรรทัด) ---
+if st.button("🚀 สร้างและส่งรายงาน", type="primary"):
     try:
         wb = load_workbook("template.xlsx")
         ws = wb.active 
         ws_temp = wb["ImageTemplate"]
 
-        # เขียนข้อมูลหน้าแรก
+        # เขียนข้อมูล Part 1-3
         write_safe(ws, "B5", doc_no)
         write_safe(ws, "F6", ref_po)
         write_safe(ws, "J5", date_issue.strftime('%d/%m/%Y'))
@@ -117,14 +118,14 @@ if st.button("🚀 Generate & Send Report", type="primary"):
         write_safe(ws, "D15", service_type)
         write_safe(ws, "D17", job_performed) 
 
-        # ตำแหน่งรูปหน้าแรก (1-6) ตาม Template
+        # ตำแหน่งรูป 1-6 ในหน้าแรก (พิกัดเดิม)
         loc_fixed = ["A49", "A62", "A75", "A92", "A105", "A118"]
         desc_fixed = ["H49", "H62", "H75", "H92", "H105", "H118"]
         
-        current_cursor = 131 # เริ่มหน้าใหม่แถว 131
+        # สำหรับรูปที่ 7 เป็นต้นไป เริ่มที่แถว 174 (ไม่เว้นช่วง)
+        current_cursor = 174 
         header_h = 4
         block_h = 13
-        gap_h = 4 
 
         for idx, item in enumerate(final_photo_data):
             if not item["img"]: continue
@@ -133,29 +134,25 @@ if st.button("🚀 Generate & Send Report", type="primary"):
                 p_loc, d_loc = loc_fixed[idx], desc_fixed[idx]
             else:
                 rel_idx = idx - 6
-                # ทุกๆ 3 รูป (7, 10, 13...) ต้องขึ้น Header ใหม่
+                # ทุกๆ 3 รูป (7, 10, 13...) ให้แปะหัวกระดาษก่อน
                 if rel_idx % 3 == 0:
-                    if rel_idx > 0: current_cursor += gap_h # เว้นช่องว่าง
-                    
-                    # Copy Header 1-4
                     for r in range(1, header_h + 1):
-                        target_row = current_cursor + r - 1
+                        target_row = current_cursor
                         ws.row_dimensions[target_row].height = ws_temp.row_dimensions[r].height
                         for c in range(1, 12):
                             source_cell = ws_temp.cell(row=r, column=c)
                             target_cell = ws.cell(row=target_row, column=c)
-                            target_cell.value = source_cell.value
+                            target_cell.value = source_cell.value # ก๊อปปี้ตัวอักษร "Photo Report"
                             copy_style(source_cell, target_cell)
-                    
-                    # Copy Merged Cells ของ Header (Fix Error)
-                    for m_range in ws_temp.merged_cells.ranges:
-                        if m_range.min_row <= header_h:
-                            new_m = f"{get_column_letter(m_range.min_col)}{current_cursor + m_range.min_row - 1}:{get_column_letter(m_range.max_col)}{current_cursor + m_range.max_row - 1}"
-                            if new_m not in ws.merged_cells: ws.merge_cells(new_m)
-                    
-                    current_cursor += header_h
+                        
+                        # Copy Merged Cells ของหัวกระดาษ
+                        for m_range in ws_temp.merged_cells.ranges:
+                            if m_range.min_row == r:
+                                new_m = f"{get_column_letter(m_range.min_col)}{target_row}:{get_column_letter(m_range.max_col)}{target_row}"
+                                if new_m not in ws.merged_cells: ws.merge_cells(new_m)
+                        current_cursor += 1
                 
-                # Copy Block รูป (แถว 5-17)
+                # วางบล็อกรูป (5-17 จาก ImageTemplate)
                 p_row = current_cursor
                 for r in range(0, block_h):
                     target_row = p_row + r
@@ -165,10 +162,12 @@ if st.button("🚀 Generate & Send Report", type="primary"):
                         target_cell = ws.cell(row=target_row, column=c)
                         copy_style(source_cell, target_cell)
                 
-                # Copy Merged Cells ของ Block รูป (Fix Error)
+                # Copy Merged Cells ของบล็อกรูป
                 for m_range in ws_temp.merged_cells.ranges:
                     if 5 <= m_range.min_row <= 17:
-                        new_m = f"{get_column_letter(m_range.min_col)}{p_row + m_range.min_row - 5}:{get_column_letter(m_range.max_col)}{p_row + m_range.max_row - 5}"
+                        t_off = m_range.min_row - 5
+                        b_off = m_range.max_row - 5
+                        new_m = f"{get_column_letter(m_range.min_col)}{p_row + t_off}:{get_column_letter(m_range.max_col)}{p_row + b_off}"
                         if new_m not in ws.merged_cells: ws.merge_cells(new_m)
                 
                 p_loc, d_loc = f"A{p_row}", f"H{p_row}"
@@ -177,10 +176,9 @@ if st.button("🚀 Generate & Send Report", type="primary"):
             add_image_to_excel(ws, item["img"], p_loc)
             write_safe(ws, d_loc, item["desc"])
 
-        # บันทึกไฟล์และส่งเมล
+        # บันทึกและส่งเมล
         output = io.BytesIO()
         wb.save(output)
-        
         msg = MIMEMultipart()
         msg['From'], msg['To'], msg['Subject'] = SENDER_EMAIL, RECEIVER_EMAIL, f"Report: {doc_no}"
         part = MIMEBase('application', 'octet-stream')
@@ -194,7 +192,8 @@ if st.button("🚀 Generate & Send Report", type="primary"):
             server.login(SENDER_EMAIL, SENDER_PASSWORD)
             server.send_message(msg)
             
-        st.success("✅ ส่งรายงานสำเร็จ!")
-        st.download_button("📥 Download", output.getvalue(), f"Report_{doc_no}.xlsx")
+        st.success("✅ สร้างและส่งรายงานสำเร็จ!")
+        st.download_button("📥 Download Excel", output.getvalue(), f"Report_{doc_no}.xlsx")
+
     except Exception as e:
-        st.error(f"🚨 Error: {e}")
+        st.error(f"🚨 ข้อผิดพลาด: {e}")
