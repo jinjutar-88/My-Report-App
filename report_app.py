@@ -15,7 +15,7 @@ SENDER_EMAIL = "jinjutar.smartdev@gmail.com"
 SENDER_PASSWORD = "UZFS BDTC XCLZ RZSQ"
 RECEIVER_EMAIL = "jinjutar.smartdev@gmail.com"
 
-TEMPLATE_FILE = "template 2.xlsx"
+TEMPLATE_FILE = "template.xlsx"
 MAIN_SHEET = "1"
 IMAGE_TEMPLATE_SHEET = "ImageTemplate"
 
