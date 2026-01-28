@@ -10,13 +10,12 @@ from email.mime.base import MIMEBase
 from email import encoders
 from copy import copy
 
-# --- 1. CONFIGURATION ---
+# --- CONFIG ---
 SENDER_EMAIL = "jinjutar.smartdev@gmail.com"
 SENDER_PASSWORD = "UZFS BDTC XCLZ RZSQ"
 RECEIVER_EMAIL = "jinjutar.smartdev@gmail.com"
 
-
-# --- 2. HELPERS ---
+# --- HELPERS ---
 def add_image_to_excel(ws, img_file, cell_address):
     if img_file is None:
         return
@@ -24,7 +23,6 @@ def add_image_to_excel(ws, img_file, cell_address):
     img_data = io.BytesIO(img_file.getvalue())
     img = Image(img_data)
 
-    # คำนวณขนาดพื้นที่ cell หรือ merged cell
     max_w, max_h = 350, 250
     for m_range in ws.merged_cells.ranges:
         if ws[cell_address].coordinate in m_range:
@@ -38,7 +36,6 @@ def add_image_to_excel(ws, img_file, cell_address):
             )
             break
 
-    # scale ให้พอดีกรอบ
     ratio = min(max_w / img.width, max_h / img.height)
     img.width = int(img.width * ratio)
     img.height = int(img.height * ratio)
@@ -56,7 +53,7 @@ def write_safe(ws, cell_addr, value):
     ws[cell_addr] = value
 
 
-# --- 3. STREAMLIT UI ---
+# --- UI ---
 st.set_page_config(page_title="Smart Dev Report Generator", layout="wide")
 
 if 'photos' not in st.session_state:
@@ -109,6 +106,102 @@ for i in list(st.session_state.photos):
 if st.button("➕ Add More Photo"):
     st.session_state.photos.append(max(st.session_state.photos) + 1)
     st.rerun()
+
+
+# --- GENERATE ---
+if st.button("🚀 Generate & Send Report", type="primary", use_container_width=True):
+    try:
+        wb = load_workbook("template 2.xlsx")
+        ws = wb["1"]
+        ws_temp = wb["ImageTemplate"]
+
+        # Part 1–3
+        write_safe(ws, "B5", doc_no)
+        write_safe(ws, "F6", ref_po)
+        write_safe(ws, "J5", date_issue.strftime('%d/%m/%Y'))
+        write_safe(ws, "B16", project_name)
+        write_safe(ws, "H7", site_location)
+        write_safe(ws, "C9", contact_client)
+        write_safe(ws, "A7", contact_co_ltd)
+        write_safe(ws, "B42", engineer_name)
+        write_safe(ws, "D15", service_type)
+        write_safe(ws, "D17", job_performed)
+
+        # รูป 1–6
+        loc_fixed = ["A49", "A62", "A75", "A92", "A105", "A118"]
+        desc_fixed = ["H49", "H62", "H75", "H92", "H105", "H118"]
+
+        for idx, item in enumerate(final_photo_data[:6]):
+            if item["img"]:
+                add_image_to_excel(ws, item["img"], loc_fixed[idx])
+                write_safe(ws, desc_fixed[idx], item["desc"])
+
+        # รูป 7+
+        extra = final_photo_data[6:]
+        rows_template = 43
+
+        if extra:
+            start_row = ws.max_row + 2
+
+            for page_i in range(0, len(extra), 3):
+                group = extra[page_i:page_i + 3]
+
+                # copy template block
+                for r in range(1, rows_template + 1):
+                    ws.row_dimensions[start_row + r - 1].height = ws_temp.row_dimensions[r].height
+                    for c in range(1, 12):
+                        src = ws_temp.cell(r, c)
+                        dst = ws.cell(start_row + r - 1, c)
+                        dst.value = src.value
+                        if src.has_style:
+                            dst.font = copy(src.font)
+                            dst.border = copy(src.border)
+                            dst.fill = copy(src.fill)
+                            dst.number_format = copy(src.number_format)
+                            dst.alignment = copy(src.alignment)
+
+                # merged cells
+                for m in ws_temp.merged_cells.ranges:
+                    new_range = f"{get_column_letter(m.min_col)}{start_row + m.min_row - 1}:{get_column_letter(m.max_col)}{start_row + m.max_row - 1}"
+                    ws.merge_cells(new_range)
+
+                # insert photos
+                img_rows = [5, 18, 31]
+                desc_rows = [5, 18, 31]
+
+                for i, item in enumerate(group):
+                    if item["img"]:
+                        add_image_to_excel(ws, item["img"], f"A{start_row + img_rows[i] - 1}")
+                        write_safe(ws, f"H{start_row + desc_rows[i] - 1}", item["desc"])
+
+                start_row += rows_template + 1
+
+        # Save
+        output = io.BytesIO()
+        wb.save(output)
+
+        # Send email
+        msg = MIMEMultipart()
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = RECEIVER_EMAIL
+        msg['Subject'] = f"Report: {doc_no}"
+
+        part = MIMEBase('application', 'octet-stream')
+        part.set_payload(output.getvalue())
+        encoders.encode_base64(part)
+        part.add_header('Content-Disposition', f'attachment; filename="Report_{doc_no}.xlsx"')
+        msg.attach(part)
+
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.send_message(msg)
+
+        st.success("✅ สร้างรายงานเรียบร้อย")
+        st.download_button("📥 Download Excel", output.getvalue(), f"Report_{doc_no}.xlsx")
+
+    except Exception as e:
+        st.error(f"🚨 Error: {e}")
 
 
 # --- 4. GENERATE REPORT ---
