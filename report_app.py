@@ -8,6 +8,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
+from copy import copy
 
 # ---------------- CONFIG ----------------
 SENDER_EMAIL = "jinjutar.smartdev@gmail.com"
@@ -17,8 +18,8 @@ RECEIVER_EMAIL = "jinjutar.smartdev@gmail.com"
 TEMPLATE_FILE = "template.xlsx"
 MAIN_SHEET = "1"
 IMAGE_TEMPLATE_SHEET = "ImageTemplate"
-
 # ----------------------------------------
+
 
 def add_image_to_excel(ws, img_file, cell):
     if img_file is None:
@@ -27,7 +28,7 @@ def add_image_to_excel(ws, img_file, cell):
     img_data = io.BytesIO(img_file.getvalue())
     img = Image(img_data)
 
-    # resize ให้พอดี cell
+    # resize ให้พอดี
     max_w, max_h = 600, 350
     ratio = min(max_w / img.width, max_h / img.height)
     img.width = int(img.width * ratio)
@@ -37,16 +38,20 @@ def add_image_to_excel(ws, img_file, cell):
 
 
 def write_safe(ws, cell, value):
-    for m in ws.merged_cells.ranges:
-        if cell in m:
-            ws.cell(m.min_row, m.min_col).value = value
+    if value is None:
+        value = ""
+
+    for merged in ws.merged_cells.ranges:
+        if cell in merged:
+            ws.cell(row=merged.min_row, column=merged.min_col).value = value
             return
-    ws[cell] = value
+
+    ws[cell].value = value
 
 
 # ---------------- UI ----------------
-st.set_page_config("Smart Dev Report", layout="wide")
-st.title("🚀 Smart Dev Report Generator 🚀")
+st.set_page_config("Smart Dev Report Generator v0.1", layout="wide")
+st.title("🚀 Smart Dev Report Generator v0.1")
 
 if "photos" not in st.session_state:
     st.session_state.photos = [0]
@@ -78,6 +83,7 @@ service_type = st.selectbox(
 )
 
 job_performed = st.text_area("Job Performed (รายละเอียดงาน)", height=150)
+
 # --- Part 4 ---
 st.subheader("📷 Photo Upload")
 final_photo_data = []
@@ -91,7 +97,7 @@ for i in list(st.session_state.photos):
 
     with col1:
         if img:
-            st.image(img, width=200)
+            st.image(img, width=180)
 
     with col3:
         if st.button("❌", key=f"del{i}"):
@@ -102,7 +108,7 @@ for i in list(st.session_state.photos):
 
 
 if st.button("➕ Add Photo"):
-    st.session_state.photos.append(max(st.session_state.photos)+1)
+    st.session_state.photos.append(max(st.session_state.photos) + 1)
     st.rerun()
 
 
@@ -113,7 +119,7 @@ if st.button("🚀 Generate Report"):
         ws = wb[MAIN_SHEET]
         ws_temp = wb[IMAGE_TEMPLATE_SHEET]
 
-        # Part 1–3 write
+        # --- Part 1–3 ---
         write_safe(ws, "B5", doc_no)
         write_safe(ws, "F6", ref_po)
         write_safe(ws, "J5", date_issue.strftime("%d/%m/%Y"))
@@ -125,7 +131,7 @@ if st.button("🚀 Generate Report"):
         write_safe(ws, "D15", service_type)
         write_safe(ws, "D17", job_performed)
 
-        # Images 1–6 on first page
+        # --- รูป 1–6 ---
         img_cells = ["A49","A62","A75","A92","A105","A118"]
         desc_cells = ["H49","H62","H75","H92","H105","H118"]
 
@@ -134,20 +140,17 @@ if st.button("🚀 Generate Report"):
                 add_image_to_excel(ws, item["img"], img_cells[i])
                 write_safe(ws, desc_cells[i], item["desc"])
 
-        # ===== รูปที่ 7+ ต่อท้ายใน sheet เดียว โดยใช้ ImageTemplate =====
-
+        # --- รูป 7+ ต่อท้าย sheet เดียว ---
         extra_photos = final_photo_data[6:]
 
         if extra_photos:
-            block_height = ws_temp.max_row  # ความสูงของ template ทั้งหน้า
-
-            # แถวเริ่มต้น = ต่อจากรูปที่ 6 (A118)
+            block_height = ws_temp.max_row
             start_row = 119
 
             for page_i in range(0, len(extra_photos), 3):
                 group = extra_photos[page_i:page_i+3]
 
-                # --- copy template ทั้ง block ---
+                # copy template
                 for r in range(1, ws_temp.max_row + 1):
                     ws.row_dimensions[start_row + r - 1].height = ws_temp.row_dimensions[r].height
 
@@ -156,7 +159,6 @@ if st.button("🚀 Generate Report"):
                         dst = ws.cell(start_row + r - 1, c)
 
                         dst.value = src.value
-
                         if src.has_style:
                             dst.font = copy(src.font)
                             dst.border = copy(src.border)
@@ -164,7 +166,7 @@ if st.button("🚀 Generate Report"):
                             dst.number_format = copy(src.number_format)
                             dst.alignment = copy(src.alignment)
 
-                # --- copy merged cells ---
+                # merged cells
                 for m in ws_temp.merged_cells.ranges:
                     new_range = (
                         f"{get_column_letter(m.min_col)}{start_row + m.min_row - 1}:"
@@ -172,7 +174,7 @@ if st.button("🚀 Generate Report"):
                     )
                     ws.merge_cells(new_range)
 
-                # --- ใส่รูปลงในตำแหน่งเดิมของ template ---
+                # ใส่รูป
                 img_rows = [5, 18, 31]
                 desc_rows = [5, 18, 31]
 
@@ -181,14 +183,13 @@ if st.button("🚀 Generate Report"):
                         add_image_to_excel(ws, item["img"], f"A{start_row + img_rows[i] - 1}")
                         write_safe(ws, f"H{start_row + desc_rows[i] - 1}", item["desc"])
 
-                # เลื่อน cursor ไป block ถัดไป
                 start_row += block_height + 1
 
         # Save output
         output = io.BytesIO()
         wb.save(output)
 
-        # -------- EMAIL --------
+        # --- EMAIL ---
         msg = MIMEMultipart()
         msg["From"] = SENDER_EMAIL
         msg["To"] = RECEIVER_EMAIL
