@@ -111,7 +111,7 @@ if st.button("➕ Add More Photo"):
 # --- GENERATE ---
 if st.button("🚀 Generate & Send Report", type="primary", use_container_width=True):
     try:
-        wb = load_workbook("template 2.xlsx")
+        wb = load_workbook("template.xlsx")
         ws = wb["1"]
         ws_temp = wb["ImageTemplate"]
 
