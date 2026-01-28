@@ -147,9 +147,8 @@ if st.button("🚀 Generate & Send Report", type="primary", use_container_width=
         
         header_h = 4
         block_h = 13
-
-last_fixed_row = int(''.join(filter(str.isdigit, loc_fixed[-1])))
-current_cursor = last_fixed_row + block_h
+        last_fixed_row = int(''.join(filter(str.isdigit, loc_fixed[-1])))
+        current_cursor = last_fixed_row + block_h
 
         for idx, item in enumerate(final_photo_data):
             if not item["img"]: continue
