@@ -11,7 +11,7 @@ from email import encoders
 from copy import copy
 
 # ---------------- CONFIG ----------------
-TEMPLATE_FILE = "template 2.xlsx"
+TEMPLATE_FILE = "template.xlsx"
 
 SENDER_EMAIL = "jinjutar.smartdev@gmail.com"
 SENDER_PASSWORD = "uzfsbdtcxclzrzsq"   # ต้องเป็น app password
