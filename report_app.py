@@ -4,12 +4,17 @@ from openpyxl.drawing.image import Image
 from openpyxl.utils import get_column_letter
 from datetime import datetime
 import io
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 from copy import copy
 
 # ---------------- CONFIG ----------------
-TEMPLATE_FILE = "template.xlsx"
+TEMPLATE_FILE = "template 2.xlsx"
+
 SENDER_EMAIL = "jinjutar.smartdev@gmail.com"
-SENDER_PASSWORD = "UZFS BDTC XCLZ RZSQ"
+SENDER_PASSWORD = "uzfsbdtcxclzrzsq"   # ต้องเป็น app password
 RECEIVER_EMAIL = "jinjutar.smartdev@gmail.com"
 
 # ---------------- HELPERS ----------------
@@ -64,6 +69,7 @@ def copy_template_block(ws, ws_temp, start_row):
         new_range = f"{get_column_letter(m.min_col)}{start_row + m.min_row - 1}:{get_column_letter(m.max_col)}{start_row + m.max_row - 1}"
         ws.merge_cells(new_range)
 
+
 # ---------------- UI ----------------
 st.set_page_config(page_title="Smart Dev Report", layout="wide")
 
@@ -93,7 +99,7 @@ st.subheader("🛠 Part 3")
 service_type = st.selectbox("Service Type", ["Project", "Commissioning", "Repairing", "Service", "Training"])
 job_detail = st.text_area("Job Detail", height=120)
 
-# ---- Part 4 (Preview ดีๆ)
+# ---- Part 4
 st.subheader("📸 Part 4: Photo Report")
 final_photo_data = []
 
@@ -117,14 +123,15 @@ if st.button("➕ Add more photo"):
     st.session_state.photos.append(max(st.session_state.photos) + 1)
     st.rerun()
 
+
 # ---------------- GENERATE ----------------
-if st.button("🚀 Generate Excel"):
+if st.button("🚀 Generate, Send Email & Download"):
     try:
         wb = load_workbook(TEMPLATE_FILE)
         ws = wb["1"]
         ws_temp = wb["ImageTemplate"]
 
-        # Write data
+        # Write text
         write_safe(ws, "B5", doc_no)
         write_safe(ws, "F6", ref_po)
         write_safe(ws, "J5", date_issue.strftime("%d/%m/%Y"))
@@ -136,7 +143,7 @@ if st.button("🚀 Generate Excel"):
         write_safe(ws, "D15", service_type)
         write_safe(ws, "D17", job_detail)
 
-        # Photos 1-6
+        # Photos 1–6
         loc = ["A49", "A62", "A75", "A92", "A105", "A118"]
         desc_loc = ["H49", "H62", "H75", "H92", "H105", "H118"]
 
@@ -159,16 +166,49 @@ if st.button("🚀 Generate Excel"):
                 desc_rows = [5, 18, 31]
 
                 for j, item in enumerate(group):
-                    add_image_to_excel(ws, item["img"], f"A{start_row + img_rows[j] - 1}")
-                    write_safe(ws, f"H{start_row + desc_rows[j] - 1}", item["desc"])
+                    if item["img"]:
+                        add_image_to_excel(ws, item["img"], f"A{start_row + img_rows[j] - 1}")
+                        write_safe(ws, f"H{start_row + desc_rows[j] - 1}", item["desc"])
 
                 start_row += rows_per_page + 1
 
+        # Save to memory
         output = io.BytesIO()
         wb.save(output)
 
-        st.success("✅ Generate สำเร็จ")
-        st.download_button("📥 Download Excel", output.getvalue(), "report.xlsx")
+        # ---------------- SEND EMAIL ----------------
+        email_status = "❌ Email not sent"
+        try:
+            msg = MIMEMultipart()
+            msg["From"] = SENDER_EMAIL
+            msg["To"] = RECEIVER_EMAIL
+            msg["Subject"] = f"Report: {doc_no}"
+
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(output.getvalue())
+            encoders.encode_base64(part)
+            part.add_header("Content-Disposition", f'attachment; filename="Report_{doc_no}.xlsx"')
+            msg.attach(part)
+
+            with smtplib.SMTP("smtp.gmail.com", 587) as server:
+                server.starttls()
+                server.login(SENDER_EMAIL, SENDER_PASSWORD)
+                server.send_message(msg)
+
+            email_status = "✅ Email sent successfully"
+
+        except Exception as mail_err:
+            email_status = f"⚠️ Email failed: {mail_err}"
+
+        # ---------------- UI RESULT ----------------
+        st.success("✅ Excel generated")
+        st.info(email_status)
+
+        st.download_button(
+            "📥 Download Excel",
+            output.getvalue(),
+            f"Report_{doc_no}.xlsx"
+        )
 
     except Exception as e:
         st.error(f"❌ Error: {e}")
