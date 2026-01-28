@@ -29,7 +29,6 @@ def add_image_to_excel(ws, img_file, cell_address):
     if img_file is None: return
     img_data = io.BytesIO(img_file.getvalue())
     img = Image(img_data)
-    
     max_w, max_h = 0, 0
     found_range = None
     for m_range in ws.merged_cells.ranges:
@@ -40,7 +39,6 @@ def add_image_to_excel(ws, img_file, cell_address):
             for row in range(m_range.min_row, m_range.max_row + 1):
                 max_h += (ws.row_dimensions[row].height or 15) * 1.33
             break
-    
     if not found_range: max_w, max_h = 350, 250
     ratio = min((max_w - 10) / img.width, (max_h - 10) / img.height)
     img.width, img.height = int(img.width * ratio), int(img.height * ratio)
@@ -58,53 +56,59 @@ def write_safe(ws, cell_addr, value):
 st.set_page_config(page_title="Smart Dev Report Generator", layout="wide")
 if 'photos' not in st.session_state: st.session_state.photos = [0]
 
-st.title("🚀 Smart Dev Report Generator v0.5")
+st.title("🚀 Smart Dev Report Generator v0.5.1")
 
-# --- ส่วนรับข้อมูลที่เคยหายไป ---
-with st.expander("📄 Part 1-3: Document & Project Details", expanded=True):
-    c1, c2, c3 = st.columns(3)
-    doc_no = c1.text_input("Doc. No.")
-    ref_po = c2.text_input("Ref. PO No.")
-    date_issue = c3.date_input("Date", datetime.now())
+# --- ส่วนรับข้อมูล (แบบไม่แยก Part / No Expander) ---
+st.subheader("📄 Document Details")
+c1, c2, c3 = st.columns(3)
+doc_no = c1.text_input("Doc. No.")
+ref_po = c2.text_input("Ref. PO No.")
+date_issue = c3.date_input("Date", datetime.now())
 
-    p1, p2 = st.columns(2)
-    project_name = p1.text_input("Project Name")
-    site_location = p1.text_input("Site / Location")
-    contact_client = p2.text_input("Contact Person (Client)")
-    contact_co_ltd = p2.text_input("Contact (Smart Dev Co., Ltd.)")
-    engineer_name = st.text_input("Engineer Name (Prepared By)")
+st.markdown("---")
+st.subheader("🏢 Project & Contact Information")
+p1, p2 = st.columns(2)
+project_name = p1.text_input("Project Name")
+site_location = p1.text_input("Site / Location")
+contact_client = p2.text_input("Contact Person (Client)")
+contact_co_ltd = p2.text_input("Contact (Smart Dev Co., Ltd.)")
+engineer_name = st.text_input("Engineer Name (Prepared By)")
 
-    job_performed = st.text_area("Job Performed (รายละเอียดงาน)")
+st.markdown("---")
+st.subheader("🛠 Service Details")
+job_performed = st.text_area("Job Performed (รายละเอียดงาน)", height=150)
 
-# --- Photo Report ---
-st.header("📸 Photo Report")
+st.markdown("---")
+st.subheader("📸 Photo Report")
 final_photo_data = []
 for i in list(st.session_state.photos):
     with st.container():
-        c_p, c_i, c_d = st.columns([3, 5, 1])
-        with c_i:
-            f = st.file_uploader(f"รูปที่ {i+1}", type=['jpg','png','jpeg'], key=f"f{i}")
-            d = st.text_input(f"คำบรรยาย {i+1}", key=f"d{i}")
-        with c_p:
-            if f: st.image(f, use_container_width=True)
-        with c_d:
+        col_prev, col_input, col_del = st.columns([3, 5, 1])
+        with col_input:
+            up_img = st.file_uploader(f"Upload Image {i+1}", type=['jpg','png','jpeg'], key=f"f{i}")
+            up_desc = st.text_input(f"Description {i+1}", key=f"d{i}")
+        with col_prev:
+            if up_img: st.image(up_img, use_container_width=True)
+        with col_del:
             if st.button("🗑️", key=f"del{i}"):
                 st.session_state.photos.remove(i)
                 st.rerun()
-        final_photo_data.append({"img": f, "desc": d})
+        final_photo_data.append({"img": up_img, "desc": up_desc})
+        st.write("")
 
-if st.button("➕ เพิ่มรูปภาพ"):
+if st.button("➕ Add More Photo"):
     st.session_state.photos.append(max(st.session_state.photos) + 1 if st.session_state.photos else 0)
     st.rerun()
 
-# --- 4. ENGINE ---
-if st.button("🚀 Generate & Send Report", type="primary"):
+# --- 4. GENERATE & SEND ---
+st.markdown("---")
+if st.button("🚀 Generate & Send Report", type="primary", use_container_width=True):
     try:
         wb = load_workbook("template.xlsx")
-        ws = wb.active # Sheet1
+        ws = wb.active 
         ws_temp = wb["ImageTemplate"]
 
-        # --- เขียนข้อมูล Part 1-3 ลงหน้าแรก ---
+        # เขียนข้อมูล Part 1-3
         write_safe(ws, "B5", doc_no)
         write_safe(ws, "F6", ref_po)
         write_safe(ws, "J5", date_issue.strftime('%d/%m/%Y'))
@@ -115,31 +119,23 @@ if st.button("🚀 Generate & Send Report", type="primary"):
         write_safe(ws, "B42", engineer_name)
         write_safe(ws, "D17", job_performed) 
 
-        # พิกัดรูปภาพ 1-6
+        # พิกัดรูปภาพหน้าแรก
         loc_fixed = ["A49", "A62", "A75", "A92", "A105", "A118"]
         desc_fixed = ["H49", "H62", "H75", "H92", "H105", "H118"]
         
-        # --- Logic รูปที่ 7 เป็นต้นไป (Pagination) ---
-        start_row = 131 
-        header_h = 4
-        block_h = 13
-        gap_h = 4 # เว้น 4 ช่องก่อนเริ่มหน้าใหม่
+        # Logic Pagination รูปที่ 7+
+        start_row, header_h, block_h, gap_h = 131, 4, 13, 4
 
         for idx, item in enumerate(final_photo_data):
             if not item["img"]: continue
-            
             if idx < 6:
                 p_loc, d_loc = loc_fixed[idx], desc_fixed[idx]
             else:
                 rel_idx = idx - 6
                 page_num = rel_idx // 3
-                pos_in_page = rel_idx % 3 # 0, 1, 2
-                
-                # คำนวณ Page Offset: 1 หน้าประกอบด้วย Header(4) + 3 Blocks(39) + Gap(4)
-                # รวมเป็น 47 แถวต่อหน้า
+                pos_in_page = rel_idx % 3
                 page_offset = page_num * (header_h + (3 * block_h) + gap_h)
                 
-                # แทรก Header ใหม่ทุก 3 รูป
                 if pos_in_page == 0:
                     h_start = start_row + page_offset
                     for r in range(1, header_h + 1):
@@ -147,29 +143,23 @@ if st.button("🚀 Generate & Send Report", type="primary"):
                         for c in range(1, 12):
                             copy_style(ws_temp.cell(row=r, column=c), ws.cell(row=h_start + r - 1, column=c))
                 
-                # พิกัดวางรูป
                 p_row = start_row + page_offset + header_h + (pos_in_page * block_h)
-                
-                # Copy บล็อกรูป (จาก ImageTemplate แถว 5-17)
                 for r in range(0, block_h):
                     target_r = p_row + r
                     ws.row_dimensions[target_r].height = ws_temp.row_dimensions[5 + r].height
                     for c in range(1, 12):
                         copy_style(ws_temp.cell(row=5 + r, column=c), ws.cell(row=target_r, column=c))
                 
-                # จัดการ Merged Cells
                 for m_range in ws_temp.merged_cells.ranges:
                     if m_range.min_row >= 5 and m_range.max_row <= 17:
                         t_o, b_o = m_range.min_row - 5, m_range.max_row - 5
                         new_m = f"{get_column_letter(m_range.min_col)}{p_row + t_o}:{get_column_letter(m_range.max_col)}{p_row + b_o}"
                         if new_m not in ws.merged_cells: ws.merge_cells(new_m)
-                
                 p_loc, d_loc = f"A{p_row}", f"H{p_row}"
 
             add_image_to_excel(ws, item["img"], p_loc)
             write_safe(ws, d_loc, item["desc"])
 
-        # บันทึกและส่งเมล
         output = io.BytesIO()
         wb.save(output)
         msg = MIMEMultipart()
@@ -187,6 +177,5 @@ if st.button("🚀 Generate & Send Report", type="primary"):
             
         st.success("✅ สร้างและส่งรายงานสำเร็จ!")
         st.download_button("📥 Download Excel", output.getvalue(), f"Report_{doc_no}.xlsx")
-
     except Exception as e:
         st.error(f"🚨 ข้อผิดพลาด: {e}")
