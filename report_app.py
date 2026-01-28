@@ -166,7 +166,7 @@ if st.button("🚀 Generate & Send Report", type="primary", use_container_width=
                     ws.merge_cells(new_range)
 
                 # insert photos
-                iimg_cells_template = ["A5", "A18", "A31"]
+                imagetemplate = ["A5", "A18", "A31"]
                 desc_cells_template = ["H5", "H18", "H31"]
 
                 for i, item in enumerate(group):
