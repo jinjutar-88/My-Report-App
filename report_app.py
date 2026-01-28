@@ -171,13 +171,13 @@ if st.button("🚀 Generate & Send Report", type="primary", use_container_width=
 
                 for i, item in enumerate(group):
                     if item["img"]:
-                    col_img = img_cells_template[i][0]
-                    row_img = int(img_cells_template[i][1:])
-                    col_desc = desc_cells_template[i][0]
-                    row_desc = int(desc_cells_template[i][1:])
+                        col_img = img_cells_template[i][0]
+                        row_img = int(img_cells_template[i][1:])
+                        col_desc = desc_cells_template[i][0]
+                        row_desc = int(desc_cells_template[i][1:])
 
-                    add_image_to_excel(ws, item["img"], f"{col_img}{start_row + row_img - 1}")
-                    write_safe(ws, f"{col_desc}{start_row + row_desc - 1}", item["desc"])
+                        add_image_to_excel(ws, item["img"], f"{col_img}{start_row + row_img - 1}")
+                        write_safe(ws, f"{col_desc}{start_row + row_desc - 1}", item["desc"])
 
                 start_row += rows_template + 1
 
