@@ -151,61 +151,60 @@ if st.button("🚀 Generate & Send Report", type="primary", use_container_width=
         current_cursor = last_fixed_row + block_h
 
        # --- หลังจาก current_cursor ถูกคำนวณแล้ว ---
+        extra_photos = final_photo_data[6:]  # รูปที่ 7 ขึ้นไป
 
-extra_photos = final_photo_data[6:]  # รูปที่ 7 ขึ้นไป
+        # แบ่งเป็นกลุ่มละ 3 รูป = 1 หน้า
+        pages = [extra_photos[i:i+3] for i in range(0, len(extra_photos), 3)]
 
-# แบ่งเป็นกลุ่มละ 3 รูป = 1 หน้า
-pages = [extra_photos[i:i+3] for i in range(0, len(extra_photos), 3)]
-
-for page in pages:
-    # 1. แทรก header ทั้งหน้า
-    for r in range(1, header_h + 1):
-        target_row = current_cursor
-        ws.row_dimensions[target_row].height = ws_temp.row_dimensions[r].height
-
-        for c in range(1, 12):
-            source_cell = ws_temp.cell(row=r, column=c)
-            target_cell = ws.cell(row=target_row, column=c)
-            target_cell.value = source_cell.value
-            copy_style(source_cell, target_cell)
-
-        for m_range in ws_temp.merged_cells.ranges:
-            if m_range.min_row == r:
-                new_m = f"{get_column_letter(m_range.min_col)}{target_row}:{get_column_letter(m_range.max_col)}{target_row}"
-                if new_m not in ws.merged_cells:
-                    ws.merge_cells(new_m)
-
-        current_cursor += 1
-
-    # 2. วาง 3 block รูปเสมอ (แม้บาง block จะไม่มีรูป)
-    for slot in range(3):
-        p_row = current_cursor
-
-        # copy template block (เหมือนเดิม)
-        for r in range(0, block_h):
-            target_row = p_row + r
-            ws.row_dimensions[target_row].height = ws_temp.row_dimensions[5 + r].height
+        for page in pages:
+            # 1. แทรก header ทั้งหน้า
+            for r in range(1, header_h + 1):
+                target_row = current_cursor
+                ws.row_dimensions[target_row].height = ws_temp.row_dimensions[r].height
 
             for c in range(1, 12):
-                source_cell = ws_temp.cell(row=5 + r, column=c)
+                source_cell = ws_temp.cell(row=r, column=c)
                 target_cell = ws.cell(row=target_row, column=c)
+                target_cell.value = source_cell.value
                 copy_style(source_cell, target_cell)
 
-        for m_range in ws_temp.merged_cells.ranges:
-            if 5 <= m_range.min_row <= 17:
-                t_o = m_range.min_row - 5
-                b_o = m_range.max_row - 5
-                new_m = f"{get_column_letter(m_range.min_col)}{p_row + t_o}:{get_column_letter(m_range.max_col)}{p_row + b_o}"
-                if new_m not in ws.merged_cells:
-                    ws.merge_cells(new_m)
+            for m_range in ws_temp.merged_cells.ranges:
+                if m_range.min_row == r:
+                    new_m = f"{get_column_letter(m_range.min_col)}{target_row}:{get_column_letter(m_range.max_col)}{target_row}"
+                    if new_m not in ws.merged_cells:
+                        ws.merge_cells(new_m)
 
-        # ถ้ามีรูปจริงใน slot นี้ ค่อยใส่รูป
-        if slot < len(page):
-            item = page[slot]
-            add_image_to_excel(ws, item["img"], f"A{p_row}")
-            write_safe(ws, f"H{p_row}", item["desc"])
+            current_cursor += 1
 
-        current_cursor += block_h
+        # 2. วาง 3 block รูปเสมอ (แม้บาง block จะไม่มีรูป)
+        for slot in range(3):
+            p_row = current_cursor
+
+            # copy template block (เหมือนเดิม)
+            for r in range(0, block_h):
+                target_row = p_row + r
+                ws.row_dimensions[target_row].height = ws_temp.row_dimensions[5 + r].height
+
+                for c in range(1, 12):
+                    source_cell = ws_temp.cell(row=5 + r, column=c)
+                    target_cell = ws.cell(row=target_row, column=c)
+                    copy_style(source_cell, target_cell)
+
+            for m_range in ws_temp.merged_cells.ranges:
+                if 5 <= m_range.min_row <= 17:
+                    t_o = m_range.min_row - 5
+                    b_o = m_range.max_row - 5
+                    new_m = f"{get_column_letter(m_range.min_col)}{p_row + t_o}:{get_column_letter(m_range.max_col)}{p_row + b_o}"
+                    if new_m not in ws.merged_cells:
+                        ws.merge_cells(new_m)
+
+            # ถ้ามีรูปจริงใน slot นี้ ค่อยใส่รูป
+            if slot < len(page):
+                item = page[slot]
+                add_image_to_excel(ws, item["img"], f"A{p_row}")
+                write_safe(ws, f"H{p_row}", item["desc"])
+
+            current_cursor += block_h
 
         output = io.BytesIO()
         wb.save(output)
