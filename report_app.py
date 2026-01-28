@@ -9,7 +9,32 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 from copy import copy
+# ---------- PREVIEW แบบหน้า Report ----------
+st.markdown("---")
+st.subheader("👀 Preview หน้า Report")
 
+valid_items = [x for x in final_photo_data if x["img"]]
+
+if not valid_items:
+    st.info("ยังไม่มีรูปสำหรับ preview")
+else:
+    for i in range(0, len(valid_items), 2):
+        col1, col2 = st.columns(2)
+
+        # รูปซ้าย
+        with col1:
+            item = valid_items[i]
+            st.markdown(f"**Photo {i+1}**")
+            st.image(item["img"], use_container_width=True)
+            st.caption(item["desc"] or "")
+
+        # รูปขวา (ถ้ามี)
+        if i + 1 < len(valid_items):
+            with col2:
+                item = valid_items[i+1]
+                st.markdown(f"**Photo {i+2}**")
+                st.image(item["img"], use_container_width=True)
+                st.caption(item["desc"] or "")
 # <<< ADDED
 from PIL import Image as PILImage
 import excel2img
