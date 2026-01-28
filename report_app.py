@@ -52,22 +52,32 @@ if "photos" not in st.session_state:
     st.session_state.photos = [0]
 
 # --- Part 1 ---
-st.subheader("Part 1: Document")
+st.subheader("📄 Part 1: Document Details")
 c1, c2, c3 = st.columns(3)
-doc_no = c1.text_input("Doc No")
-ref_po = c2.text_input("PO No")
+doc_no = c1.text_input("Doc. No.")
+ref_po = c2.text_input("Ref. PO No.")
 date_issue = c3.date_input("Date", datetime.now())
 
 # --- Part 2 ---
-st.subheader("Part 2: Project")
-project = st.text_input("Project Name")
-site = st.text_input("Site")
-engineer = st.text_input("Engineer")
+st.subheader("🏢 Part 2: Project & Contact Information")
+p1, p2 = st.columns(2)
+
+project_name = p1.text_input("Project Name")
+site_location = p1.text_input("Site / Location")
+
+contact_client = p2.text_input("Contact Person (Client)")
+contact_co_ltd = p2.text_input("Contact (Smart Dev Co., Ltd.)")
+
+engineer_name = st.text_input("Engineer Name (Prepared By)")
 
 # --- Part 3 ---
-st.subheader("Part 3: Detail")
-job = st.text_area("Job detail")
+st.subheader("🛠 Part 3: Service Details")
+service_type = st.selectbox(
+    "Service Type",
+    ["Project", "Commissioning", "Repairing", "Services", "Training", "Check", "Other"]
+)
 
+job_performed = st.text_area("Job Performed (รายละเอียดงาน)", height=150)
 # --- Part 4 ---
 st.subheader("📷 Photo Upload")
 final_photo_data = []
