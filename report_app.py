@@ -65,17 +65,41 @@ def add_image_to_excel(ws, img_file, cell_address):
     img.width, img.height = 300, 200
     ws.add_image(img, cell_address)
 
-# --- 4. ระบบจัดการรูปภาพ (Session State) ---
-if 'photos' not in st.session_state:
-    st.session_state.photos = [0]
+# --- 4. หน้าเว็บ UI (เพิ่มส่วน Preview รูปภาพ) ---
+st.set_page_config(page_title="Smart Dev Solution - Report", layout="wide")
+st.title("🚀 Smart Dev Report Generator v0.2.1")
 
-def add_photo():
-    new_id = max(st.session_state.photos) + 1 if st.session_state.photos else 0
-    st.session_state.photos.append(new_id)
+# ... (ส่วน Part 1 - 3 เหมือนเดิม) ...
 
-def delete_photo(index):
-    if len(st.session_state.photos) > 1:
-        st.session_state.photos.remove(index)
+st.header("📸 Part 4: Photo Report")
+final_photo_data = []
+for i in st.session_state.photos:
+    with st.container():
+        # แบ่งเป็น 3 คอลัมน์: รูป/รายละเอียด/ปุ่มลบ
+        col_preview, col_input, col_del = st.columns([3, 5, 1])
+        
+        with col_input:
+            img = st.file_uploader(f"Upload Image", type=['png', 'jpg', 'jpeg'], key=f"file_{i}")
+            desc = st.text_input(f"Description", key=f"desc_{i}", placeholder="พิมพ์คำบรรยาย...")
+        
+        with col_preview:
+            if img:
+                # แสดงรูปตัวอย่างทันทีที่อัปโหลด
+                st.image(img, caption="Preview", use_container_width=True)
+            else:
+                st.info("กรุณาเลือกรูปภาพ")
+
+        with col_del:
+            st.write("") 
+            st.write("") 
+            if st.button("🗑️", key=f"del_{i}"):
+                delete_photo(i)
+                st.rerun()
+        
+        final_photo_data.append({"img": img, "desc": desc})
+        st.markdown("---")
+
+st.button("➕ Add More Photo", on_click=add_photo)
 
 # --- 5. หน้าเว็บ UI ---
 st.set_page_config(page_title="Smart Dev Solution - Report", layout="wide")
