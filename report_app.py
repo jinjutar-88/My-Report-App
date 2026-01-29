@@ -209,6 +209,18 @@ if st.button("🚀 Generate Report"):
             server.send_message(msg)
 
         st.success("✅ Report created and sent!")
+        # --- ส่วนที่เพิ่มใหม่: เอฟเฟกต์ฉลองความสำเร็จ ---
+        st.balloons() # ปล่อยลูกโป่ง
+        st.toast("ส่งรายงานสำเร็จแล้วนะหมูเด้ง!", icon='🦛') # เด้งเตือนมุมจอ
+
+        # ป๊อปอัพน้องหมูเด้งชูเยี่ยม
+        st.markdown("""
+            <div style="text-align: center; background-color: #f0f2f6; padding: 20px; border-radius: 15px; border: 2px solid #4CAF50;">
+<img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJndHgzd25icGd4Z3R4Z3R4Z3R4Z3R4Z3R4Z3R4Z3R4Z3R4JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1z/Yf9SInA8oR3vG/giphy.gif" width="200">
+<h2 style="color: #2E7D32; font-family: 'Kanit', sans-serif;">เยี่ยมมากหมูเด้ง! ส่งงานเรียบร้อย 🦛✨</h2>
+</div>
+        """, unsafe_allow_html=True)
+        st.write("") # เว้นวรรคหน่อย
 
         st.download_button(
             "⬇️ Download Report",
