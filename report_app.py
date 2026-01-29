@@ -52,7 +52,7 @@ def write_safe(ws, cell, value):
 
 # ---------------- UI ----------------
 st.set_page_config("Smart Dev Report Generator v0.1", layout="wide")
-st.title("🚀 Smart Dev Report Generator v0.1")
+st.title("🚀 Smart Dev Report Generator v0.1 🚀")
 
 if "photos" not in st.session_state:
     st.session_state.photos = [0]
